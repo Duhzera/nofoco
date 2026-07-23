@@ -1,0 +1,615 @@
+<title>NoFoco — Mockups das Telas</title>
+<style>
+  :root{
+    --page-bg:#e9ebe6; --page-text:#16190f; --page-soft:#5c6353; --line:#d4d8cc; --shadow:rgba(10,14,6,.22);
+    /* NoFoco app tokens (dark-first) */
+    --bg:#0d0f0d; --surface:#181b16; --surface2:#232720; --ink:#f2f5f0; --soft:#9199896; --soft:#919989; --hair:#2b312a; --faint:#14170f;
+    --accent:#a6e052; --accent-press:#8fc93f; --on-accent:#0d0f0d;
+    --carb:#f2a33c; --prot:#4a9de0; --fat:#e86fa6; --kcal:#a6e052; --micro:#5bc0a8; --danger:#e2574c;
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --page-bg:#0a0c08; --page-text:#eef1e8; --page-soft:#8f978a; --line:#232821; --shadow:rgba(0,0,0,.5); }
+  }
+  :root[data-theme="dark"]{ --page-bg:#0a0c08; --page-text:#eef1e8; --page-soft:#8f978a; --line:#232821; --shadow:rgba(0,0,0,.5); }
+  :root[data-theme="light"]{ --page-bg:#e9ebe6; --page-text:#16190f; --page-soft:#5c6353; --line:#d4d8cc; --shadow:rgba(10,14,6,.22); }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    background:var(--page-bg); color:var(--page-text); min-height:100vh; padding:44px 22px 72px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .head{max-width:1200px; margin:0 auto 40px}
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:16px}
+  .brand .mk{font-size:26px; font-weight:800; letter-spacing:-.02em}
+  .brand .mk b{color:var(--accent); font-weight:800}
+  .logo{width:34px;height:34px; border-radius:10px; background:var(--accent); display:grid; place-items:center; flex:none}
+  .logo svg{width:20px;height:20px}
+  .kicker{font-size:12px; letter-spacing:.15em; text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 8px}
+  h1{font-size:clamp(26px,4.5vw,40px); line-height:1.06; margin:0 0 12px; letter-spacing:-.02em; text-wrap:balance; font-weight:800}
+  .lede{font-size:16px; line-height:1.6; color:var(--page-soft); max-width:64ch; margin:0}
+  .legend{display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:22px; font-size:12.5px; color:var(--page-soft)}
+  .legend span{display:inline-flex; align-items:center; gap:7px}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .tryhint{margin-top:18px; display:inline-flex; align-items:center; gap:9px; background:rgba(166,224,82,.14); color:var(--accent); border:1px solid rgba(166,224,82,.4); padding:9px 14px; border-radius:12px; font-size:13px; font-weight:600}
+
+  .grid{max-width:1200px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(288px,1fr)); gap:48px 36px; justify-items:center}
+  .cell{width:100%; max-width:318px; display:flex; flex-direction:column; align-items:center}
+  .caption{margin:18px 4px 0; width:100%}
+  .cap-n{font-size:11.5px; color:var(--accent); font-weight:700; letter-spacing:.05em}
+  .cap-t{font-size:16px; font-weight:700; margin:3px 0 5px; letter-spacing:-.01em}
+  .cap-d{font-size:13px; line-height:1.5; color:var(--page-soft); margin:0}
+  .cap-d em{color:var(--page-text); font-style:normal; font-weight:600}
+
+  /* phone */
+  .phone{width:290px; height:610px; border-radius:42px; background:#000; padding:9px; box-shadow:0 26px 50px -20px var(--shadow), 0 5px 14px -8px var(--shadow); position:relative; flex:none}
+  .screen{width:100%; height:100%; border-radius:34px; overflow:hidden; position:relative; background:var(--bg); color:var(--ink); display:flex; flex-direction:column; font-size:12.5px}
+  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:112px; height:24px; background:#000; border-radius:0 0 15px 15px; z-index:30}
+  .status{display:flex; justify-content:space-between; align-items:center; padding:11px 20px 3px; font-size:11.5px; font-weight:600; flex:none}
+  .status .r{display:flex; gap:5px; align-items:center; font-size:10px}
+  .body{flex:1; overflow:hidden; padding:6px 15px 0; position:relative}
+  .num{font-variant-numeric:tabular-nums}
+
+  .app-h{display:flex; justify-content:space-between; align-items:flex-start; padding:8px 2px 12px}
+  .app-h .t{font-size:19px; font-weight:800; letter-spacing:-.02em}
+  .app-h .s{font-size:11.5px; color:var(--soft); margin-top:2px}
+  .back{width:30px;height:30px; border-radius:9px; background:var(--surface2); display:grid; place-items:center; color:var(--ink)}
+  .lnk{color:var(--accent); font-weight:700; font-size:12.5px}
+  .ic{width:16px;height:16px; display:inline-block; flex:none}
+
+  /* welcome */
+  .hero{border-radius:20px; overflow:hidden; height:186px; position:relative; margin-bottom:4px; background:radial-gradient(120% 90% at 30% 25%, #2a3320, #0f130c)}
+  .hero .plate{position:absolute; inset:0; display:grid; place-items:center}
+  .benefit{display:flex; gap:11px; align-items:flex-start; margin-bottom:13px}
+  .benefit .bi{width:30px;height:30px;border-radius:9px; background:var(--surface2); color:var(--accent); display:grid;place-items:center; flex:none}
+  .benefit .bt{font-size:12.5px; line-height:1.35}
+  .btn{text-align:center; font-weight:700; font-size:14px; padding:14px; border-radius:14px}
+  .btn.pri{background:var(--accent); color:var(--on-accent)}
+  .btn.sec{background:transparent; border:1px solid var(--hair); color:var(--ink)}
+  .dots{display:flex; gap:5px; justify-content:center; margin-top:12px}
+  .dots i{width:6px;height:6px;border-radius:50%; background:var(--hair)}
+  .dots i.on{background:var(--accent); width:16px; border-radius:4px}
+
+  /* fields */
+  .field{margin-bottom:11px}
+  .field label{font-size:10.5px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.05em}
+  .field .in{margin-top:6px; background:var(--surface); border:1px solid var(--hair); border-radius:11px; padding:11px 12px; font-size:13.5px; font-weight:600; display:flex; justify-content:space-between; align-items:center}
+  .field .in .u{color:var(--soft); font-size:11.5px}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .objg{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px}
+  .oc{border:1px solid var(--hair); background:var(--surface); border-radius:12px; padding:11px; font-size:11.5px; font-weight:700; display:flex; align-items:center; gap:8px; color:var(--soft)}
+  .oc.on{border-color:var(--accent); background:rgba(166,224,82,.1); color:var(--accent)}
+  .oc .rd{width:14px;height:14px;border-radius:50%; border:1.5px solid currentColor; flex:none; display:grid;place-items:center}
+  .oc.on .rd::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+  /* ring gauge */
+  .gauge{display:flex; flex-direction:column; align-items:center; padding:8px 0 4px}
+  .gwrap{width:170px;height:104px; position:relative; overflow:hidden}
+  .gval{position:absolute; bottom:0; width:100%; text-align:center}
+  .gval b{font-size:30px; font-weight:800; letter-spacing:-.02em; display:block; line-height:1}
+  .gval small{font-size:11px; color:var(--soft)}
+  .gval .pct{color:var(--accent); font-weight:700; font-size:11.5px}
+  .ring{width:150px;height:150px;border-radius:50%; position:relative; display:grid; place-items:center}
+  .ring::before{content:"";position:absolute; inset:15px; background:var(--surface); border-radius:50%}
+  .ring .rc{position:relative; text-align:center}
+  .ring .rc b{font-size:26px;font-weight:800; letter-spacing:-.02em; display:block; line-height:1}
+  .ring .rc small{font-size:10px; color:var(--soft); display:block; margin-top:3px; text-transform:uppercase; letter-spacing:.05em}
+
+  .macro3{display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:12px 0}
+  .mc{background:var(--surface); border:1px solid var(--hair); border-radius:12px; padding:10px 9px}
+  .mc .mk{font-size:10.5px; color:var(--soft); font-weight:600}
+  .mc .mv{font-size:14px; font-weight:800; margin:3px 0 6px; letter-spacing:-.01em}
+  .mc .mv span{font-size:10px; color:var(--soft); font-weight:600}
+  .mbar{height:4px; border-radius:3px; background:var(--surface2); overflow:hidden}
+  .mbar i{display:block;height:100%; border-radius:3px}
+
+  .micros{display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-top:6px}
+  .micro{background:var(--surface); border:1px solid var(--hair); border-radius:11px; padding:9px 4px; text-align:center}
+  .micro .mi{color:var(--micro); font-size:15px}
+  .micro b{display:block; font-size:12px; font-weight:800; margin-top:3px}
+  .micro small{font-size:9px; color:var(--soft)}
+
+  .sec-t{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--soft); margin:13px 2px 8px; display:flex; justify-content:space-between; align-items:center}
+
+  /* week strip */
+  .week{display:flex; justify-content:space-between; margin:2px 0 12px}
+  .day{display:flex;flex-direction:column;align-items:center;gap:5px; font-size:10px; color:var(--soft); font-weight:600; width:30px}
+  .day .dn{width:28px;height:28px;border-radius:50%; display:grid;place-items:center; font-size:12px; color:var(--ink); font-weight:700}
+  .day.on .dn{background:var(--accent); color:var(--on-accent)}
+  .day.on{color:var(--accent)}
+
+  /* meal rows */
+  .meal-r{display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--hair); border-radius:13px; padding:11px 12px; margin-bottom:8px}
+  .meal-r .mi{width:32px;height:32px;border-radius:9px; background:var(--surface2); display:grid;place-items:center; flex:none; font-size:16px}
+  .meal-r .mtx{flex:1}
+  .meal-r .mtx b{font-size:13px; font-weight:700; display:block}
+  .meal-r .mtx small{font-size:10.5px; color:var(--soft)}
+  .meal-r .mk{font-size:12px; font-weight:700; color:var(--soft)}
+
+  /* scan */
+  .scanview{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:16px; padding:20px}
+  .scanhint{font-size:12.5px; color:var(--soft); line-height:1.4; max-width:200px}
+  .scanframe{width:190px;height:150px; position:relative}
+  .corner{position:absolute; width:26px;height:26px; border:3px solid var(--accent)}
+  .corner.tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:6px 0 0 0}
+  .corner.tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 6px 0 0}
+  .corner.bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 6px}
+  .corner.br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 6px 0}
+  .barcode{position:absolute; inset:34px 30px; display:flex; gap:3px; align-items:stretch}
+  .barcode s{flex:1; background:var(--ink)}
+  .barcode s:nth-child(2n){flex:.5}
+  .barcode s:nth-child(3n){flex:1.6}
+  .flash{width:46px;height:46px;border-radius:50%; background:var(--surface2); display:grid;place-items:center; color:var(--ink)}
+
+  /* search */
+  .searchbar{display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--hair); border-radius:12px; padding:10px 12px; font-size:13px}
+  .filters{display:flex; gap:7px; margin:11px 0}
+  .filters b{font-size:11px; font-weight:700; padding:6px 12px; border-radius:20px; background:var(--surface2); color:var(--soft)}
+  .filters b.on{background:var(--accent); color:var(--on-accent)}
+  .res{display:flex; align-items:center; gap:11px; padding:9px 2px; border-bottom:1px solid var(--faint)}
+  .res .ri{width:34px;height:34px;border-radius:9px; background:var(--surface2); display:grid;place-items:center; flex:none; font-size:17px}
+  .res .rt{flex:1}
+  .res .rt b{font-size:12.5px; font-weight:600; display:block}
+  .res .rt small{font-size:10.5px; color:var(--soft)}
+  .res .rk{font-size:11px; color:var(--soft); font-weight:600}
+  .res.sel{border-bottom-color:transparent}
+  .res .chk{width:20px;height:20px;border-radius:50%; background:var(--accent); color:var(--on-accent); display:grid;place-items:center; flex:none}
+
+  .dockbar{flex:none; background:var(--surface); border-top:1px solid var(--hair); padding:11px 14px 13px}
+  .dock-food{font-size:12.5px; font-weight:700; margin-bottom:9px}
+  .dockrow{display:flex; align-items:center; gap:9px}
+  .stepper{display:flex; align-items:center; gap:0; background:var(--surface2); border-radius:11px; padding:4px; flex:1}
+  .stepper .b{width:30px;height:30px;border-radius:8px; background:var(--surface); display:grid;place-items:center; font-size:18px; font-weight:700; color:var(--accent); border:1px solid var(--hair); cursor:pointer; user-select:none}
+  .stepper .q{flex:1; text-align:center; font-size:12.5px; font-weight:700}
+  .addbtn{background:var(--accent); color:var(--on-accent); font-weight:700; font-size:12.5px; padding:11px 14px; border-radius:11px; text-align:center; white-space:nowrap}
+
+  /* interactive portion */
+  .toggle{display:flex; background:var(--surface2); border-radius:11px; padding:3px; margin:2px 0 14px}
+  .toggle b{flex:1; text-align:center; font-size:12.5px; font-weight:700; padding:9px 0; border-radius:8px; color:var(--soft); cursor:pointer; transition:.15s}
+  .toggle b.on{background:var(--accent); color:var(--on-accent)}
+  .bigstep{display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--hair); border-radius:14px; padding:8px; margin-bottom:6px}
+  .bigstep .b{width:44px;height:44px;border-radius:11px; background:var(--surface2); display:grid;place-items:center; font-size:24px; font-weight:700; color:var(--accent); cursor:pointer; user-select:none; border:1px solid var(--hair)}
+  .bigstep .b:active{background:var(--accent); color:var(--on-accent)}
+  .bigstep .val{text-align:center}
+  .bigstep .val b{font-size:22px; font-weight:800; letter-spacing:-.02em; display:block}
+  .bigstep .val small{font-size:10.5px; color:var(--soft)}
+  .eqv{text-align:center; font-size:11px; color:var(--soft); margin-bottom:14px}
+  .eqv b{color:var(--accent)}
+  .donutrow{display:flex; justify-content:space-around; background:var(--surface); border:1px solid var(--hair); border-radius:14px; padding:13px 6px; margin-bottom:11px; text-align:center}
+  .donutrow div b{font-size:17px; font-weight:800; display:block; letter-spacing:-.02em}
+  .donutrow div small{font-size:9.5px; color:var(--soft); font-weight:600}
+  .donutrow div i{width:20px;height:4px;border-radius:3px;display:block;margin:6px auto 0}
+  .mealpick{display:flex; gap:6px; flex-wrap:wrap; margin:2px 0 0}
+  .mealpick b{font-size:11px;font-weight:700; padding:8px 11px; border-radius:10px; border:1px solid var(--hair); color:var(--soft); cursor:pointer}
+  .mealpick b.on{background:rgba(166,224,82,.1); border-color:var(--accent); color:var(--accent)}
+
+  /* meal detail list */
+  .fooditem{display:flex; align-items:center; gap:11px; padding:11px 2px; border-bottom:1px solid var(--faint)}
+  .fooditem .fi{width:34px;height:34px;border-radius:9px; background:var(--surface2); display:grid;place-items:center; flex:none; font-size:17px}
+  .fooditem .ft{flex:1}
+  .fooditem .ft b{font-size:12.5px; font-weight:600; display:block}
+  .fooditem .ft small{font-size:10.5px; color:var(--soft)}
+  .fooditem .fk{font-size:11.5px; color:var(--soft); font-weight:600}
+  .summ{display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:6px}
+  .summ div{background:var(--surface); border:1px solid var(--hair); border-radius:11px; padding:9px 4px; text-align:center}
+  .summ div small{font-size:9px; color:var(--soft); display:block}
+  .summ div b{font-size:13px; font-weight:800}
+
+  /* reports */
+  .seg{display:flex; background:var(--surface2); border-radius:11px; padding:3px; margin:2px 0 12px}
+  .seg b{flex:1; text-align:center; font-size:11.5px; font-weight:700; padding:8px 0; border-radius:8px; color:var(--soft)}
+  .seg b.on{background:var(--accent); color:var(--on-accent)}
+  .chart{display:flex; align-items:flex-end; justify-content:space-between; gap:6px; height:120px; padding:8px 2px 0; background:var(--surface); border:1px solid var(--hair); border-radius:14px; margin-bottom:11px}
+  .col{flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; height:100%; justify-content:flex-end}
+  .col i{width:64%; background:var(--accent); border-radius:4px 4px 2px 2px; display:block}
+  .col small{font-size:9px; color:var(--soft); font-weight:600}
+  .donutbox{display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--hair); border-radius:14px; padding:13px; margin-bottom:11px}
+  .donut{width:74px;height:74px;border-radius:50%; flex:none; position:relative}
+  .donut::before{content:"";position:absolute;inset:13px;background:var(--surface);border-radius:50%}
+  .dleg{flex:1; display:flex; flex-direction:column; gap:7px; font-size:11px}
+  .dleg div{display:flex; align-items:center; gap:7px}
+  .dleg s{width:9px;height:9px;border-radius:3px; flex:none}
+  .dleg .lb{flex:1}
+  .dleg .pc{color:var(--soft); font-weight:700}
+  .microline{display:flex; align-items:center; gap:9px; margin-bottom:9px; font-size:11px}
+  .microline .ml{width:64px; color:var(--soft)}
+  .microline .mbar2{flex:1; height:5px; border-radius:3px; background:var(--surface2); overflow:hidden}
+  .microline .mbar2 i{display:block;height:100%;background:var(--micro); border-radius:3px}
+  .microline .mp{width:34px; text-align:right; font-weight:700; color:var(--micro)}
+
+  /* photo AI */
+  .photo{border-radius:16px; overflow:hidden; height:150px; position:relative; margin-bottom:12px; background:radial-gradient(120% 100% at 60% 40%, #3a2f22, #14100b)}
+  .photo .cam{position:absolute; right:12px; bottom:-16px; width:44px;height:44px;border-radius:50%; background:var(--accent); color:var(--on-accent); display:grid;place-items:center; border:3px solid var(--bg)}
+  .aibadge{display:inline-flex; align-items:center; gap:6px; background:rgba(166,224,82,.14); color:var(--accent); border:1px solid rgba(166,224,82,.35); padding:4px 10px; border-radius:20px; font-size:10.5px; font-weight:700; margin-bottom:8px}
+  .disc{font-size:10px; color:var(--soft); line-height:1.4; margin:8px 2px 10px; font-style:italic}
+
+  .cta{background:var(--accent); color:var(--on-accent); text-align:center; font-weight:700; font-size:13.5px; padding:13px; border-radius:13px}
+
+  .tabbar{flex:none; height:58px; background:var(--surface); border-top:1px solid var(--hair); display:flex; justify-content:space-around; align-items:center; padding:0 6px 6px}
+  .tab{display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9px; color:var(--soft); font-weight:600; flex:1}
+  .tab.on{color:var(--accent)}
+  .fab{width:50px;height:50px;border-radius:50%; background:var(--accent); color:var(--on-accent); display:grid;place-items:center; margin-top:-24px; box-shadow:0 8px 16px -4px rgba(166,224,82,.5); flex:none}
+  .fab svg{width:24px;height:24px}
+
+  .foot{max-width:1200px;margin:52px auto 0; padding-top:22px; border-top:1px solid var(--line); font-size:12.5px; color:var(--page-soft); line-height:1.6}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#0d0f0d" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span>
+      <span class="mk">No<b>Foco</b></span>
+    </div>
+    <p class="kicker">Proposta de UI · identidade NoFoco</p>
+    <h1>Telas do app — dark, foco no registro</h1>
+    <p class="lede">As telas principais na identidade aprovada: fundo escuro, verde lima como cor de ação e cada macronutriente com cor própria (carbo laranja, proteína azul, gordura rosa). Uma das telas tem o <strong>seletor unidade↔gramas funcionando</strong> — toque e veja os macros recalcularem.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:#a6e052"></i>Calorias</span>
+      <span><i class="dot" style="background:#f2a33c"></i>Carboidratos</span>
+      <span><i class="dot" style="background:#4a9de0"></i>Proteínas</span>
+      <span><i class="dot" style="background:#e86fa6"></i>Gorduras</span>
+      <span><i class="dot" style="background:#5bc0a8"></i>Fibra / micros</span>
+    </div>
+    <div class="tryhint">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12a9 9 0 11-6.2-8.5"/></svg>
+      Tela 06 é interativa — troque entre unidade e gramas e ajuste a porção
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- 1 WELCOME -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body" style="display:flex;flex-direction:column">
+          <div class="brand" style="margin:4px 2px 14px"><span class="logo" style="width:28px;height:28px"><svg viewBox="0 0 24 24" fill="none" stroke="#0d0f0d" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span><span class="mk" style="font-size:19px">No<b>Foco</b></span></div>
+          <div class="hero"><div class="plate">
+            <svg viewBox="0 0 120 120" width="120" height="120"><circle cx="60" cy="60" r="46" fill="#20281a" stroke="#38431f" stroke-width="2"/><circle cx="60" cy="60" r="30" fill="#161c10"/><circle cx="50" cy="52" r="9" fill="#f2a33c"/><circle cx="70" cy="50" r="8" fill="#e2574c"/><circle cx="66" cy="70" r="9" fill="#a6e052"/><circle cx="48" cy="70" r="7" fill="#4a9de0"/><circle cx="60" cy="60" r="5" fill="#e86fa6"/></svg>
+          </div></div>
+          <div style="font-size:22px; font-weight:800; letter-spacing:-.02em; margin:14px 2px 5px; line-height:1.15">Bem-vindo ao NoFoco</div>
+          <p style="font-size:12.5px; color:var(--soft); margin:0 2px 14px; line-height:1.45">Controle sua alimentação e alcance seus objetivos com mais foco e constância.</p>
+          <div style="margin-top:auto; display:flex; flex-direction:column; gap:9px; padding-bottom:6px">
+            <div class="btn pri">Criar conta</div>
+            <div class="btn sec">Entrar</div>
+            <div class="dots"><i class="on"></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption"><div class="cap-n">01</div><div class="cap-t">Boas-vindas</div><p class="cap-d">Marca, promessa e entrada. Logo de "foco" (alvo) em verde lima; CTA primário preenchido, secundário em contorno.</p></div>
+    </div>
+
+    <!-- 2 ONBOARDING -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div><div class="t">Conte sobre você</div><div class="s">Passo 2 de 4</div></div><span class="lnk">Pular</span></div>
+          <p style="font-size:11.5px; color:var(--soft); margin:0 2px 12px; line-height:1.4">Essas informações nos ajudam a sugerir suas metas diárias.</p>
+          <div class="field"><label>Nome</label><div class="in"><span>Marcos</span></div></div>
+          <div class="two">
+            <div class="field"><label>Idade</label><div class="in"><span>28</span><span class="u">anos</span></div></div>
+            <div class="field"><label>Sexo</label><div class="in"><span>Masculino</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>
+          </div>
+          <div class="two">
+            <div class="field"><label>Altura</label><div class="in"><span class="num">1,75</span><span class="u">m</span></div></div>
+            <div class="field"><label>Peso atual</label><div class="in"><span class="num">78</span><span class="u">kg</span></div></div>
+          </div>
+          <div class="field" style="margin-bottom:6px"><label>Objetivo</label></div>
+          <div class="objg">
+            <div class="oc on"><span class="rd"></span>Perder peso</div>
+            <div class="oc"><span class="rd"></span>Manter peso</div>
+            <div class="oc"><span class="rd"></span>Ganho de massa</div>
+            <div class="oc" style="font-size:10.5px">Ganho c/ perda de gordura</div>
+          </div>
+        </div>
+        <div class="dockbar"><div class="cta">Continuar</div></div>
+      </div></div>
+      <div class="caption"><div class="cap-n">02</div><div class="cap-t">Onboarding — dados</div><p class="cap-d">Coleta o que alimenta o cálculo de metas. Objetivo em 4 opções, incluindo recomposição (massa + perda de gordura).</p></div>
+    </div>
+
+    <!-- 3 META DIÁRIA -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div><div style="text-align:right"><div class="t">Sua meta diária</div></div></div>
+          <p style="font-size:11.5px; color:var(--soft); margin:0 2px 6px; line-height:1.4; text-align:center">Baseada nas suas informações e objetivo.</p>
+          <div class="gauge">
+            <div class="ring" style="background:conic-gradient(from -90deg, var(--carb) 0 45%, var(--prot) 45% 75%, var(--fat) 75% 100%)">
+              <div class="rc"><small>Calorias</small><b class="num">2.190</b><small style="text-transform:none;letter-spacing:0">kcal</small></div>
+            </div>
+            <div style="font-size:11.5px; color:var(--soft); margin-top:8px">Déficit moderado</div>
+          </div>
+          <div class="macro3">
+            <div class="mc"><div class="mk">Carbo</div><div class="mv num">246<span>g</span></div><div class="mbar"><i style="width:45%;background:var(--carb)"></i></div><div style="font-size:9px;color:var(--soft);margin-top:4px">45%</div></div>
+            <div class="mc"><div class="mk">Proteína</div><div class="mv num">164<span>g</span></div><div class="mbar"><i style="width:30%;background:var(--prot)"></i></div><div style="font-size:9px;color:var(--soft);margin-top:4px">30%</div></div>
+            <div class="mc"><div class="mk">Gordura</div><div class="mv num">73<span>g</span></div><div class="mbar"><i style="width:25%;background:var(--fat)"></i></div><div style="font-size:9px;color:var(--soft);margin-top:4px">25%</div></div>
+          </div>
+          <div class="sec-t"><span>Micros principais</span></div>
+          <div class="micros">
+            <div class="micro"><div class="mi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 8h14M5 16h14"/></svg></div><b class="num">30g</b><small>Fibras</small></div>
+            <div class="micro"><div class="mi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg></div><b class="num">1000</b><small>Cálcio</small></div>
+            <div class="micro"><div class="mi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 1-4 5 1 6-6-3-6 3 1-6-4-5 6-1z"/></svg></div><b class="num">14mg</b><small>Ferro</small></div>
+            <div class="micro"><div class="mi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg></div><b class="num">90mg</b><small>Vit. C</small></div>
+          </div>
+        </div>
+        <div class="dockbar"><div class="cta">Entendi</div></div>
+      </div></div>
+      <div class="caption"><div class="cap-n">03</div><div class="cap-t">Meta diária calculada</div><p class="cap-d">Anel multicor mostra a divisão dos macros. Micros principais em destaque. Transparência: "déficit moderado".</p></div>
+    </div>
+
+    <!-- 4 DIÁRIO / HOME -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div><div class="t">Diário</div><div class="s">Hoje, 22 de maio</div></div><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+          <div class="week">
+            <div class="day"><span>S</span><span class="dn num">19</span></div>
+            <div class="day"><span>T</span><span class="dn num">20</span></div>
+            <div class="day"><span>Q</span><span class="dn num">21</span></div>
+            <div class="day on"><span>Q</span><span class="dn num">22</span></div>
+            <div class="day"><span>S</span><span class="dn num">23</span></div>
+            <div class="day"><span>S</span><span class="dn num">24</span></div>
+            <div class="day"><span>D</span><span class="dn num">25</span></div>
+          </div>
+          <div class="gauge" style="padding-top:2px">
+            <div class="gwrap">
+              <svg viewBox="0 0 170 104" width="170" height="104"><path d="M12 100 A73 73 0 0 1 158 100" fill="none" stroke="var(--surface2)" stroke-width="13" stroke-linecap="round"/><path d="M12 100 A73 73 0 0 1 133 40" fill="none" stroke="var(--accent)" stroke-width="13" stroke-linecap="round"/></svg>
+              <div class="gval"><b class="num">1.350</b><small class="num">/ 2.190 kcal</small><div class="pct num">62% da meta</div></div>
+            </div>
+          </div>
+          <div class="macro3" style="margin:10px 0">
+            <div class="mc"><div class="mk">Carbo</div><div class="mv num" style="font-size:12px">135<span>/246g</span></div><div class="mbar"><i style="width:55%;background:var(--carb)"></i></div></div>
+            <div class="mc"><div class="mk">Proteína</div><div class="mv num" style="font-size:12px">86<span>/164g</span></div><div class="mbar"><i style="width:52%;background:var(--prot)"></i></div></div>
+            <div class="mc"><div class="mk">Gordura</div><div class="mv num" style="font-size:12px">41<span>/73g</span></div><div class="mbar"><i style="width:56%;background:var(--fat)"></i></div></div>
+          </div>
+          <div class="sec-t"><span>Refeições</span><span class="lnk">+ Adicionar</span></div>
+          <div class="meal-r"><span class="mi">🍳</span><span class="mtx"><b>Café da manhã</b><small class="num">08:00 · 320 kcal</small></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+          <div class="meal-r"><span class="mi">🥪</span><span class="mtx"><b>Lanche da manhã</b><small class="num">10:30 · 150 kcal</small></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+          <div class="meal-r"><span class="mi">🍽️</span><span class="mtx"><b>Almoço</b><small class="num">13:00 · 580 kcal</small></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Diário</div>
+          <div class="tab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>Alimentos</div>
+          <div class="tab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</div>
+        </div>
+      </div></div>
+      <div class="caption"><div class="cap-n">04</div><div class="cap-t">Diário do dia</div><p class="cap-d">Tira semanal, medidor de calorias com % da meta, barras de macro e refeições com horário. FAB central abre os 3 modos.</p></div>
+    </div>
+
+    <!-- 5 PESQUISAR -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div><div style="flex:1;text-align:center"><div class="t" style="font-size:16px">Adicionar alimento</div></div><div style="width:30px"></div></div>
+          <div class="searchbar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg><span>Pão de queijo</span></div>
+          <div class="filters"><b class="on">Todos</b><b>Alimentos</b><b>Refeições</b><b>Marcas</b></div>
+          <div class="res sel"><span class="ri">🧀</span><span class="rt"><b>Pão de queijo tradicional</b><small class="num">1 unidade média (50g) · 150 kcal</small></span><span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l5 5 9-11"/></svg></span></div>
+          <div class="res"><span class="ri">🧀</span><span class="rt"><b>Pão de queijo light</b><small class="num">1 unidade (50g) · 120 kcal</small></span></div>
+          <div class="res"><span class="ri">🧀</span><span class="rt"><b>Pão de queijo integral</b><small class="num">1 unidade (50g) · 140 kcal</small></span></div>
+          <div class="res"><span class="ri">🧀</span><span class="rt"><b>Pão de queijo recheado</b><small class="num">1 unidade (60g) · 180 kcal</small></span></div>
+          <div class="res"><span class="ri">🧀</span><span class="rt"><b>Pão de queijo vegano</b><small class="num">1 unidade (50g) · 130 kcal</small></span></div>
+        </div>
+        <div class="dockbar">
+          <div class="dock-food">Pão de queijo tradicional</div>
+          <div class="dockrow">
+            <div class="stepper"><span class="b">−</span><span class="q num">1 unid (50g)</span><span class="b">+</span></div>
+            <div class="addbtn">Adicionar<br>150 kcal</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption"><div class="cap-n">05</div><div class="cap-t">Adicionar — pesquisar</div><p class="cap-d">Busca com filtros (Alimentos/Refeições/Marcas). Item selecionado vai para a barra inferior com stepper e kcal. Toque em "+" abre a porção detalhada →</p></div>
+    </div>
+
+    <!-- 6 PORÇÃO INTERATIVA -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div><div><div class="t" style="font-size:17px">Pão de queijo</div><div class="s">Genérico · ajuste a porção</div></div></div>
+          <div class="toggle">
+            <b id="mode-unid" class="on" onclick="setMode('unid')">Unidade</b>
+            <b id="mode-g" onclick="setMode('g')">Gramas</b>
+          </div>
+          <div class="bigstep">
+            <span class="b" onclick="stepPortion(-1)">−</span>
+            <div class="val"><b id="p-main" class="num">1 unid</b><small id="p-sub" class="num">50 g</small></div>
+            <span class="b" onclick="stepPortion(1)">+</span>
+          </div>
+          <div class="eqv" id="p-eqv">≈ <b>1 unidade média</b> · toque em Gramas para digitar o peso exato</div>
+          <div class="donutrow">
+            <div><b id="v-kcal" class="num">150</b><small>kcal</small><i style="background:var(--kcal)"></i></div>
+            <div><b id="v-carb" class="num">14g</b><small>Carbo</small><i style="background:var(--carb)"></i></div>
+            <div><b id="v-prot" class="num">5g</b><small>Prot</small><i style="background:var(--prot)"></i></div>
+            <div><b id="v-fat" class="num">8g</b><small>Gord</small><i style="background:var(--fat)"></i></div>
+          </div>
+          <div class="sec-t"><span>Também nesta porção</span></div>
+          <div style="background:var(--surface); border:1px solid var(--hair); border-radius:14px; padding:2px 13px; margin-bottom:11px">
+            <div class="fooditem" style="border:none"><span class="ft"><b>Açúcares</b></span><span class="fk num" id="v-sug" style="color:var(--fat)">0,6 g</span></div>
+            <div class="fooditem"><span class="ft"><b>Fibras</b></span><span class="fk num" id="v-fib" style="color:var(--micro)">0,4 g</span></div>
+            <div class="fooditem"><span class="ft"><b>Sódio</b></span><span class="fk num" id="v-sod">155 mg</span></div>
+          </div>
+          <div class="sec-t"><span>Refeição</span></div>
+          <div class="mealpick"><b>Café</b><b class="on">Almoço</b><b>Lanche</b><b>Jantar</b></div>
+        </div>
+        <div class="dockbar"><div class="cta">Adicionar <span id="cta-kcal" class="num">150</span> kcal ao almoço</div></div>
+      </div></div>
+      <div class="caption"><div class="cap-n">06 · interativo</div><div class="cap-t">Seletor de porção — unidade ↔ gramas</div><p class="cap-d"><em>Toque em Gramas</em> e use −/+ para chegar a 80 g: todos os macros recalculam ao vivo. É o requisito E4.1 funcionando de verdade.</p></div>
+    </div>
+
+    <!-- 7 ESCANEAR -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body" style="display:flex;flex-direction:column">
+          <div class="app-h"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div><div style="flex:1;text-align:center"><div class="t" style="font-size:16px">Adicionar alimento</div></div><div style="width:30px"></div></div>
+          <div class="seg"><b class="on">Escanear</b><b>Pesquisar</b><b>Foto</b></div>
+          <div class="scanview">
+            <p class="scanhint">Posicione o código de barras no centro da câmera</p>
+            <div class="scanframe">
+              <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+              <div class="barcode"><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s><s></s></div>
+            </div>
+            <p class="scanhint" style="color:var(--accent);font-weight:600">Ou digite o código manualmente</p>
+            <div class="flash"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2h10l-1 9h4l-9 11 2-8H6z"/></svg></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption"><div class="cap-n">07</div><div class="cap-t">Adicionar — escanear</div><p class="cap-d">Leitor de código de barras com moldura e lanterna. Fallback: digitar o código. Não achou o produto? Fluxo de cadastro colaborativo.</p></div>
+    </div>
+
+    <!-- 8 RELATÓRIOS -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div><div class="t">Relatórios</div><div class="s">16 – 22 de maio</div></div></div>
+          <div class="seg"><b>Diário</b><b class="on">Semanal</b><b>Mensal</b></div>
+          <div class="sec-t"><span>Calorias</span><span class="num" style="color:var(--accent)">média 2.050 kcal</span></div>
+          <div class="chart">
+            <div class="col"><i style="height:70%"></i><small>16</small></div>
+            <div class="col"><i style="height:88%"></i><small>17</small></div>
+            <div class="col"><i style="height:62%"></i><small>18</small></div>
+            <div class="col"><i style="height:95%"></i><small>19</small></div>
+            <div class="col"><i style="height:74%"></i><small>20</small></div>
+            <div class="col"><i style="height:80%"></i><small>21</small></div>
+            <div class="col"><i style="height:66%"></i><small>22</small></div>
+          </div>
+          <div class="sec-t"><span>Macros — média semanal</span></div>
+          <div class="donutbox">
+            <div class="donut" style="background:conic-gradient(var(--carb) 0 45%, var(--prot) 45% 75%, var(--fat) 75% 100%)"></div>
+            <div class="dleg">
+              <div><s style="background:var(--carb)"></s><span class="lb">Carboidratos</span><span class="pc num">45% · 230g</span></div>
+              <div><s style="background:var(--prot)"></s><span class="lb">Proteínas</span><span class="pc num">30% · 154g</span></div>
+              <div><s style="background:var(--fat)"></s><span class="lb">Gorduras</span><span class="pc num">25% · 57g</span></div>
+            </div>
+          </div>
+          <div class="sec-t"><span>Micros — média semanal</span></div>
+          <div class="microline"><span class="ml">Fibra</span><span class="mbar2"><i style="width:93%"></i></span><span class="mp num">93%</span></div>
+          <div class="microline"><span class="ml">Cálcio</span><span class="mbar2"><i style="width:98%"></i></span><span class="mp num">98%</span></div>
+          <div class="microline"><span class="ml">Ferro</span><span class="mbar2"><i style="width:87%"></i></span><span class="mp num">87%</span></div>
+          <div class="microline"><span class="ml">Vit. C</span><span class="mbar2"><i style="width:94%"></i></span><span class="mp num">94%</span></div>
+        </div>
+      </div></div>
+      <div class="caption"><div class="cap-n">08</div><div class="cap-t">Relatórios</div><p class="cap-d">Diário / semanal / mensal. Barras de calorias com média, donut de macros e micros com % da meta atingida.</p></div>
+    </div>
+
+    <!-- 9 FOTO IA -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div><div style="flex:1;text-align:center"><div class="t" style="font-size:16px">Análise do alimento</div><div class="s">Almoço · 13:00</div></div><div style="width:30px"></div></div>
+          <div class="photo">
+            <svg viewBox="0 0 120 90" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><ellipse cx="60" cy="50" rx="42" ry="30" fill="#241d14"/><path d="M40 45 h30 v8 a4 4 0 01-4 4 h-22 a4 4 0 01-4-4z" fill="#e8934a"/><ellipse cx="42" cy="42" rx="12" ry="8" fill="#f2f0e2"/><circle cx="78" cy="46" r="6" fill="#e2574c"/><circle cx="86" cy="52" r="5" fill="#f2a33c"/><path d="M30 58 q6 -8 14 -4" stroke="#a6e052" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+            <div class="cam"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 7l1.5-2h5L16 7"/></svg></div>
+          </div>
+          <div class="aibadge"><svg class="ic" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>Estimativa com IA</div>
+          <div class="summ">
+            <div><small>kcal</small><b class="num">520</b></div>
+            <div><small>Carbo</small><b class="num">45g</b></div>
+            <div><small>Prot</small><b class="num">38g</b></div>
+            <div><small>Gord</small><b class="num">18g</b></div>
+          </div>
+          <div class="sec-t"><span>Itens identificados · toque p/ editar g</span></div>
+          <div class="fooditem" style="border:none"><span class="fi">🍚</span><span class="ft"><b>Arroz branco</b><small class="num">~150 g</small></span><span class="fk num">195</span></div>
+          <div class="fooditem"><span class="fi">🐟</span><span class="ft"><b>Salmão grelhado</b><small class="num">~120 g</small></span><span class="fk num">245</span></div>
+          <div class="fooditem"><span class="fi">🥕</span><span class="ft"><b>Cenoura cozida</b><small class="num">~80 g</small></span><span class="fk num">45</span></div>
+          <div class="fooditem"><span class="fi">🥦</span><span class="ft"><b>Brócolis</b><small class="num">~50 g</small></span><span class="fk num">35</span></div>
+          <p class="disc">* Valores aproximados. Edite as porções (em gramas) para deixar preciso.</p>
+        </div>
+        <div class="dockbar"><div class="cta">Adicionar tudo ao diário</div></div>
+      </div></div>
+      <div class="caption"><div class="cap-n">09 · fase final</div><div class="cap-t">Análise por foto (IA)</div><p class="cap-d">Foto dentro da refeição → IA lista itens com gramas estimados. Cada item é editável (reusa o seletor da tela 06). "Adicionar tudo" lança de uma vez.</p></div>
+    </div>
+
+    <!-- 10 DETALHE REFEIÇÃO -->
+    <div class="cell">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="status"><span>9:41</span><span class="r">100%</span></div>
+        <div class="body">
+          <div class="app-h"><div class="back"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div><div style="flex:1;text-align:center"><div class="t" style="font-size:17px">Almoço</div><div class="s">13:00</div></div><span class="lnk">Editar</span></div>
+          <div class="summ" style="margin-bottom:12px">
+            <div><small>kcal</small><b class="num">580</b></div>
+            <div><small>Carbo</small><b class="num">62g</b></div>
+            <div><small>Prot</small><b class="num">35g</b></div>
+            <div><small>Gord</small><b class="num">18g</b></div>
+          </div>
+          <div class="fooditem" style="border:none"><span class="fi">🍚</span><span class="ft"><b>Arroz branco cozido</b><small class="num">100 g</small></span><span class="fk num">130</span></div>
+          <div class="fooditem"><span class="fi">🫘</span><span class="ft"><b>Feijão carioca cozido</b><small class="num">100 g</small></span><span class="fk num">120</span></div>
+          <div class="fooditem"><span class="fi">🍗</span><span class="ft"><b>Peito de frango grelhado</b><small class="num">150 g</small></span><span class="fk num">165</span></div>
+          <div class="fooditem"><span class="fi">🥗</span><span class="ft"><b>Salada de alface e tomate</b><small class="num">1 prato</small></span><span class="fk num">30</span></div>
+          <div class="fooditem"><span class="fi">🫒</span><span class="ft"><b>Azeite de oliva</b><small class="num">1 colher de sopa</small></span><span class="fk num">45</span></div>
+          <div class="fooditem"><span class="fi">🍊</span><span class="ft"><b>Suco de laranja natural</b><small class="num">200 ml</small></span><span class="fk num">90</span></div>
+        </div>
+        <div class="dockbar"><div class="cta">Adicionar alimento</div></div>
+      </div></div>
+      <div class="caption"><div class="cap-n">10</div><div class="cap-t">Detalhe da refeição</div><p class="cap-d">Uma refeição aberta com resumo de macros e itens (peso + kcal). Mostra medidas mistas: gramas, "1 prato", "1 colher", ml.</p></div>
+    </div>
+
+  </div>
+
+  <footer class="foot">
+    Mockups de referência na identidade <strong>NoFoco</strong> — sem dados reais. A tela 06 é interativa (seletor unidade↔gramas). Próximos pontos: validar estes layouts, depois fechar a stack (Flutter + Supabase é a recomendação) e iniciar a implementação.
+  </footer>
+</div>
+
+<script>
+  var per100 = { kcal:300, carb:28, prot:10, fat:16, sug:1.2, fib:0.8, sod:310 };
+  var unitG = 50;
+  var state = { mode:'unid', grams:50 };
+
+  function fmt(n, dec){ return (Math.round(n*Math.pow(10,dec))/Math.pow(10,dec)).toLocaleString('pt-BR'); }
+
+  function render(){
+    var g = state.grams;
+    var f = g/100;
+    document.getElementById('v-kcal').textContent = Math.round(per100.kcal*f);
+    document.getElementById('v-carb').textContent = fmt(per100.carb*f,0)+'g';
+    document.getElementById('v-prot').textContent = fmt(per100.prot*f,0)+'g';
+    document.getElementById('v-fat').textContent  = fmt(per100.fat*f,0)+'g';
+    document.getElementById('v-sug').textContent  = fmt(per100.sug*f,1)+' g';
+    document.getElementById('v-fib').textContent  = fmt(per100.fib*f,1)+' g';
+    document.getElementById('v-sod').textContent  = Math.round(per100.sod*f)+' mg';
+    document.getElementById('cta-kcal').textContent = Math.round(per100.kcal*f);
+
+    var main = document.getElementById('p-main'), sub = document.getElementById('p-sub'), eqv = document.getElementById('p-eqv');
+    if(state.mode==='unid'){
+      var u = g/unitG;
+      main.textContent = fmt(u,1).replace(/,0$/,'') + (u===1?' unid':' unid');
+      sub.textContent = fmt(g,0)+' g';
+      eqv.innerHTML = '≈ <b>'+fmt(u,1).replace(/,0$/,'')+' unidade(s) média(s)</b> · 1 unid = 50 g';
+    } else {
+      main.textContent = fmt(g,0)+' g';
+      var u2 = g/unitG;
+      sub.textContent = '≈ '+fmt(u2,1).replace(/,0$/,'')+' unid';
+      eqv.innerHTML = 'Digitando em <b>gramas</b> · ajuste fino de 5 em 5 g';
+    }
+  }
+
+  function setMode(m){
+    state.mode = m;
+    document.getElementById('mode-unid').classList.toggle('on', m==='unid');
+    document.getElementById('mode-g').classList.toggle('on', m==='g');
+    render();
+  }
+
+  function stepPortion(dir){
+    if(state.mode==='unid'){
+      var u = Math.max(0.5, (state.grams/unitG) + dir*0.5);
+      state.grams = u*unitG;
+    } else {
+      state.grams = Math.max(5, state.grams + dir*5);
+    }
+    render();
+  }
+
+  render();
+</script>

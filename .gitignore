@@ -1,0 +1,40 @@
+# dependências
+node_modules/
+
+# Expo / build
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# nativo gerado
+/ios
+/android
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# env / segredos
+.env
+.env*.local
+
+# logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# sistema
+.DS_Store
+Thumbs.db
+
+# editores
+.vscode/
+.idea/
+*.tsbuildinfo
+
+# configuração local do Claude Code (pessoal por máquina)
+.claude/settings.local.json
