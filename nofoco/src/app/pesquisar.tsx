@@ -6,12 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
 import { searchFoods, unitKcal, type Food } from '@/data/foods';
-import type { MealKey } from '@/store/diary';
+import type { MealId } from '@/store/meals';
 
 const FILTERS = ['Todos', 'Alimentos', 'Refeições', 'Marcas'] as const;
 
 export default function PesquisarScreen() {
-  const { meal } = useLocalSearchParams<{ meal?: MealKey }>();
+  const { meal, voltarPara } = useLocalSearchParams<{ meal?: MealId; voltarPara?: string }>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Todos');
 
@@ -24,7 +24,10 @@ export default function PesquisarScreen() {
   }, [query, filter]);
 
   const openFood = (f: Food) =>
-    router.push({ pathname: '/porcao', params: { id: f.id, ...(meal ? { meal } : {}) } });
+    router.push({
+      pathname: '/porcao',
+      params: { id: f.id, ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
+    });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

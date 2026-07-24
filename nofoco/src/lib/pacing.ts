@@ -2,23 +2,38 @@
  * Orientação adaptativa (pacing). Distribui a meta do dia entre as refeições e,
  * conforme a pessoa come mais ou menos que o previsto, ajusta a sugestão das
  * refeições que ainda faltam — com mensagens curtas e sem culpa.
+ *
+ * Tudo aqui recebe a lista de refeições por parâmetro: ela é editável pela pessoa
+ * (ver store/meals), então nada pode assumir quantas ou quais são.
  */
-import { MEALS, mealDef, type MealKey } from '@/store/diary';
-import { splitSum } from '@/store/profile';
+import type { Goal } from '@/lib/goal';
+import { findMeal, pctSum, timeToMinutes, type Meal, type MealId } from '@/store/meals';
 
 export type PaceStatus = 'under' | 'on' | 'over' | 'done';
-type Consumed = Record<MealKey, number>;
-type Split = Record<MealKey, number>;
+type Consumed = Record<MealId, number>;
 
-/** Alvo base (kcal) de uma refeição — proporcional à % dela. */
-export function mealTarget(goalKcal: number, split: Split, key: MealKey): number {
-  const total = splitSum(split) || 1;
-  return Math.round((goalKcal * (split[key] ?? 0)) / total);
+/** Fatia (0..1) que uma refeição representa da meta diária. */
+function share(meals: Meal[], id: MealId): number {
+  const total = pctSum(meals) || 1;
+  return (findMeal(meals, id)?.pct ?? 0) / total;
 }
 
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
+/** Alvo base (kcal) de uma refeição — proporcional à % dela. */
+export function mealTarget(goalKcal: number, meals: Meal[], id: MealId): number {
+  return Math.round(goalKcal * share(meals, id));
+}
+
+/** Alvo de calorias E macros de uma refeição — a mesma fatia aplicada a cada meta. */
+export type MealMacroTarget = { kcal: number; carb: number; protein: number; fat: number };
+
+export function mealMacroTarget(goal: Goal, meals: Meal[], id: MealId): MealMacroTarget {
+  const f = share(meals, id);
+  return {
+    kcal: Math.round(goal.kcal * f),
+    carb: Math.round(goal.carb * f),
+    protein: Math.round(goal.protein * f),
+    fat: Math.round(goal.fat * f),
+  };
 }
 
 export function nowMinutes(): number {
@@ -34,18 +49,47 @@ export type DayPacing = {
   message: string;
 };
 
-/** Orientação do dia inteiro, com base no horário atual e no consumido. */
-export function dayPacing(goalKcal: number, split: Split, consumed: Consumed, nowMin: number): DayPacing {
-  const total = MEALS.reduce((a, m) => a + (consumed[m.key] ?? 0), 0);
+/**
+ * Orientação do dia inteiro, com base no horário atual e no consumido.
+ *
+ * `today` diz se o dia exibido é o de hoje. Num dia passado não existe "ritmo":
+ * dizer "ainda cabem 800 kcal" sobre a terça-feira retrasada não ajuda ninguém,
+ * então a mensagem vira um relato do que foi registrado.
+ */
+export function dayPacing(
+  goalKcal: number,
+  meals: Meal[],
+  consumed: Consumed,
+  nowMin: number,
+  today = true,
+): DayPacing {
+  const total = meals.reduce((a, m) => a + (consumed[m.id] ?? 0), 0);
   const remaining = goalKcal - total;
-  const expected = MEALS.filter((m) => timeToMinutes(m.time) <= nowMin).reduce(
-    (a, m) => a + mealTarget(goalKcal, split, m.key),
-    0,
-  );
+  const expected = meals
+    .filter((m) => timeToMinutes(m.time) <= nowMin)
+    .reduce((a, m) => a + mealTarget(goalKcal, meals, m.id), 0);
   const thr = Math.max(120, Math.round(goalKcal * 0.06));
 
   let status: PaceStatus;
   let message: string;
+
+  if (!today) {
+    if (total === 0) {
+      status = 'under';
+      message = 'Nenhum registro neste dia.';
+    } else if (remaining < 0) {
+      status = 'over';
+      message = `Neste dia você passou da meta em ${Math.abs(remaining)} kcal.`;
+    } else if (total >= goalKcal) {
+      status = 'done';
+      message = 'Neste dia você atingiu a meta 🎯';
+    } else {
+      status = 'on';
+      message = `Neste dia você registrou ${total} de ${goalKcal} kcal.`;
+    }
+    return { consumed: total, goal: goalKcal, remaining, status, message };
+  }
+
   if (total >= goalKcal) {
     if (remaining < 0) {
       status = 'over';
@@ -75,20 +119,43 @@ export type MealAdvice = {
   message: string;
 };
 
-/** Orientação adaptativa para UMA refeição: quanto comer aqui dado o restante do dia. */
-export function mealAdvice(goalKcal: number, split: Split, consumed: Consumed, key: MealKey): MealAdvice {
-  const base = mealTarget(goalKcal, split, key);
-  const eaten = consumed[key] ?? 0;
-  const total = MEALS.reduce((a, m) => a + (consumed[m.key] ?? 0), 0);
+/**
+ * Orientação adaptativa para UMA refeição: quanto comer aqui dado o restante do dia.
+ * Como em `dayPacing`, num dia passado a mensagem relata em vez de orientar.
+ */
+export function mealAdvice(
+  goalKcal: number,
+  meals: Meal[],
+  consumed: Consumed,
+  id: MealId,
+  today = true,
+): MealAdvice {
+  const base = mealTarget(goalKcal, meals, id);
+  const eaten = consumed[id] ?? 0;
+  const total = meals.reduce((a, m) => a + (consumed[m.id] ?? 0), 0);
   const remainingDay = goalKcal - total;
 
-  // refeições ainda "abertas" (sem itens), garantindo incluir a atual
-  const openKeys = MEALS.filter((m) => (consumed[m.key] ?? 0) === 0).map((m) => m.key);
-  if (!openKeys.includes(key)) openKeys.push(key);
-  const openSplit = openKeys.reduce((a, k) => a + (split[k] ?? 0), 0) || 1;
-  const suggestion = Math.max(0, Math.round((remainingDay * (split[key] ?? 0)) / openSplit));
+  if (!today) {
+    const status: PaceStatus = eaten === 0 ? 'under' : eaten > base * 1.15 ? 'over' : 'on';
+    return {
+      base,
+      consumed: eaten,
+      suggestion: base,
+      status,
+      message:
+        eaten === 0
+          ? `Nada registrado aqui neste dia (alvo era ~${base} kcal).`
+          : `Neste dia você registrou ${eaten} kcal aqui, de um alvo de ~${base} kcal.`,
+    };
+  }
 
-  const name = mealDef(key).name.toLowerCase();
+  // refeições ainda "abertas" (sem itens), garantindo incluir a atual
+  const open = meals.filter((m) => (consumed[m.id] ?? 0) === 0 || m.id === id);
+  const openPct = open.reduce((a, m) => a + (m.pct ?? 0), 0) || 1;
+  const myPct = findMeal(meals, id)?.pct ?? 0;
+  const suggestion = Math.max(0, Math.round((remainingDay * myPct) / openPct));
+
+  const name = (findMeal(meals, id)?.name ?? 'refeição').toLowerCase();
   let status: PaceStatus;
   let message: string;
 

@@ -1,12 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NutritionTable } from '@/components/ui/nutrition-table';
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
 import { getFood, macrosForGrams } from '@/data/foods';
-import { MEALS, mealDef, newItemId, useDiary, type DiaryItem, type MealKey } from '@/store/diary';
+import { dayItems, mealItems, newItemId, useDiary, type DiaryItem } from '@/store/diary';
+import { useDay } from '@/store/day';
+import { findMeal, timeToMinutes, useMeals, type MealId } from '@/store/meals';
+import { nowMinutes } from '@/lib/pacing';
 
 type Mode = 'unid' | 'g';
 
@@ -15,14 +19,43 @@ function fmtUnits(n: number): string {
   return (Math.round(n * 10) / 10).toLocaleString('pt-BR');
 }
 
+/** Sem refeição indicada, chuta a mais próxima do horário atual. */
+function nearestMealId(meals: { id: MealId; time: string }[]): MealId | undefined {
+  if (meals.length === 0) return undefined;
+  const now = nowMinutes();
+  return meals.reduce((best, m) =>
+    Math.abs(timeToMinutes(m.time) - now) < Math.abs(timeToMinutes(best.time) - now) ? m : best,
+  ).id;
+}
+
 export default function PorcaoScreen() {
-  const { id, meal: mealParam } = useLocalSearchParams<{ id: string; meal?: MealKey }>();
+  const {
+    id,
+    meal: mealParam,
+    edit: editId,
+    voltarPara,
+  } = useLocalSearchParams<{ id: string; meal?: string; edit?: string; voltarPara?: string }>();
+
   const food = getFood(id);
   const addItem = useDiary((s) => s.addItem);
+  const saveItem = useDiary((s) => s.saveItem);
+  const days = useDiary((s) => s.days);
+  const meals = useMeals((s) => s.meals);
+  const date = useDay((s) => s.date);
 
-  const [mode, setMode] = useState<Mode>('unid');
-  const [grams, setGrams] = useState(food?.unitGrams ?? 100);
-  const [meal, setMeal] = useState<MealKey>(mealParam ?? 'almoco');
+  const allItems = dayItems(days, date);
+
+  /** Item já lançado que estamos reeditando (quando veio `edit`). */
+  const existing = editId ? mealItems(allItems, mealParam ?? '').find((i) => i.id === editId) : undefined;
+  const editing = !!existing;
+
+  const [mode, setMode] = useState<Mode>(() =>
+    existing && !existing.portionLabel.includes(' un') ? 'g' : 'unid',
+  );
+  const [grams, setGrams] = useState(existing?.grams ?? food?.unitGrams ?? 100);
+  const [meal, setMeal] = useState<MealId | undefined>(
+    () => (mealParam && findMeal(meals, mealParam)?.id) || nearestMealId(meals),
+  );
 
   const macros = useMemo(() => (food ? macrosForGrams(food, grams) : null), [food, grams]);
 
@@ -30,6 +63,26 @@ export default function PorcaoScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <Text style={styles.title}>Alimento não encontrado</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // pedimos para editar, mas o item não está mais lá (excluído, ou recarga da página)
+  if (editId && !existing) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="chevron-back" size={22} color={NoFoco.ink} />
+          </Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.title}>Item não encontrado</Text>
+          </View>
+          <View style={styles.iconBtn} />
+        </View>
+        <Text style={styles.hint}>
+          Este item não está mais na refeição. Volte e adicione novamente, se quiser.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -53,11 +106,12 @@ export default function PorcaoScreen() {
 
   const switchMode = (m: Mode) => setMode(m);
 
-  const handleAdd = () => {
+  const handleSave = () => {
+    if (!meal) return;
     const portionLabel =
       mode === 'unid' ? `${fmtUnits(units)} un (${grams} ${unit})` : `${grams} ${unit}`;
     const item: DiaryItem = {
-      id: newItemId(),
+      id: existing?.id ?? newItemId(),
       foodId: food.id,
       name: food.name,
       emoji: food.emoji,
@@ -65,9 +119,18 @@ export default function PorcaoScreen() {
       portionLabel,
       macros,
     };
-    addItem(meal, item);
-    if (router.canDismiss()) router.dismissAll();
-    else router.replace('/(tabs)');
+
+    if (existing && mealParam) saveItem(date, mealParam, meal, item);
+    else addItem(date, meal, item);
+
+    // quem veio da refeição volta para ela; quem veio do FAB volta ao diário
+    if (editing || voltarPara === 'refeicao') {
+      router.dismissTo({ pathname: '/refeicao', params: { key: meal } });
+    } else if (router.canDismiss()) {
+      router.dismissAll();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (
@@ -80,11 +143,14 @@ export default function PorcaoScreen() {
           <Text style={styles.title} numberOfLines={1}>
             {food.name}
           </Text>
-          <Text style={styles.sub}>{food.brand ?? food.source} · ajuste a porção</Text>
+          <Text style={styles.sub}>
+            {food.brand ?? food.source} · {editing ? 'editando o lançamento' : 'ajuste a porção'}
+          </Text>
         </View>
         <View style={styles.iconBtn} />
       </View>
 
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       {/* alternador Unidade / Gramas */}
       <View style={styles.toggle}>
         <Pressable style={[styles.toggleBtn, mode === 'unid' && styles.toggleOn]} onPress={() => switchMode('unid')}>
@@ -148,32 +214,40 @@ export default function PorcaoScreen() {
         <MacroCell value={`${macros.fat}g`} label="Gord" color={NoFoco.fat} />
       </View>
 
-      {/* micros ao vivo */}
-      <Text style={styles.section}>Também nesta porção</Text>
-      <View style={styles.microCard}>
-        <MicroRow label="Açúcares" value={`${macros.sugar} g`} color={NoFoco.fat} first />
-        <MicroRow label="Fibras" value={`${macros.fiber} g`} color={NoFoco.micro} />
-        <MicroRow label="Sódio" value={`${macros.sodium} mg`} color={NoFoco.soft} />
+      {/* tabela completa desta porção */}
+      <View style={{ marginTop: Spacing.lg }}>
+        <NutritionTable sources={[macros]} label="Tabela nutricional completa" />
       </View>
 
       {/* refeição */}
       <Text style={styles.section}>Refeição</Text>
-      <View style={styles.meals}>
-        {MEALS.map((m) => (
-          <Pressable
-            key={m.key}
-            onPress={() => setMeal(m.key)}
-            style={[styles.mealChip, meal === m.key && styles.mealOn]}>
-            <Text style={[styles.mealText, meal === m.key && styles.mealTextOn]}>{m.name}</Text>
-          </Pressable>
-        ))}
-      </View>
+      {meals.length === 0 ? (
+        <Text style={styles.noMeals}>
+          Você não tem nenhuma refeição criada. Volte ao diário e crie uma para poder registrar.
+        </Text>
+      ) : (
+        <View style={styles.meals}>
+          {meals.map((m) => (
+            <Pressable
+              key={m.id}
+              onPress={() => setMeal(m.id)}
+              style={[styles.mealChip, meal === m.id && styles.mealOn]}>
+              <Text style={[styles.mealText, meal === m.id && styles.mealTextOn]}>{m.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
-      <View style={{ flex: 1 }} />
+        <View style={{ height: Spacing.xl }} />
+      </ScrollView>
 
-      <Pressable style={styles.cta} onPress={handleAdd}>
+      <Pressable style={[styles.cta, !meal && styles.ctaOff]} onPress={handleSave} disabled={!meal}>
         <Text style={styles.ctaText}>
-          Adicionar {macros.kcal} kcal ao {mealDef(meal).name}
+          {!meal
+            ? 'Escolha uma refeição'
+            : editing
+              ? `Salvar ${macros.kcal} kcal no ${findMeal(meals, meal)?.name ?? 'diário'}`
+              : `Adicionar ${macros.kcal} kcal ao ${findMeal(meals, meal)?.name ?? 'diário'}`}
         </Text>
       </Pressable>
     </SafeAreaView>
@@ -188,15 +262,6 @@ function MacroCell({ value, label, color }: { value: string; label: string; colo
       </Text>
       <Text style={styles.macroLabel}>{label}</Text>
       <View style={[styles.macroTick, { backgroundColor: color }]} />
-    </View>
-  );
-}
-
-function MicroRow({ label, value, color, first }: { label: string; value: string; color: string; first?: boolean }) {
-  return (
-    <View style={[styles.microRow, !first && styles.microBorder]}>
-      <Text style={styles.microLabel}>{label}</Text>
-      <Text style={[styles.microValue, { color }]}>{value}</Text>
     </View>
   );
 }
@@ -274,18 +339,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
   },
-  microCard: {
-    backgroundColor: NoFoco.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: NoFoco.hair,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.lg,
-  },
-  microRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.md },
-  microBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: NoFoco.faint },
-  microLabel: { color: NoFoco.ink, fontSize: 13 },
-  microValue: { fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
-
+  noMeals: { color: NoFoco.soft, fontSize: 12.5, lineHeight: 17 },
   meals: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
   mealChip: {
     paddingHorizontal: Spacing.md,
@@ -299,5 +353,6 @@ const styles = StyleSheet.create({
   mealTextOn: { color: NoFoco.accent },
 
   cta: { backgroundColor: NoFoco.accent, borderRadius: Radius.md, paddingVertical: 15, alignItems: 'center', marginBottom: Spacing.sm },
+  ctaOff: { opacity: 0.4 },
   ctaText: { color: NoFoco.onAccent, fontSize: 14, fontWeight: '800' },
 });
