@@ -89,6 +89,12 @@ export function formatDayTitle(key: DayKey): string {
   return `${WEEKDAYS[d.getDay()]}, ${label}`;
 }
 
+/** "23/07" — curto, para eixo de gráfico. */
+export function formatDayMonth(key: DayKey): string {
+  const d = parseKey(key);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /** "3 de dezembro de 2026" — com ano, para datas distantes (previsões). */
 export function formatFullDate(key: DayKey): string {
   const d = parseKey(key);

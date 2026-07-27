@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# EAS build archive (cópia temporária do projeto criada no build)
+/build-archive

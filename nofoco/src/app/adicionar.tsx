@@ -1,19 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
 
-type Mode = { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string; route?: string };
+type Mode = {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  desc: string;
+  route?: string;
+  soon?: boolean;
+};
 
 const MODES: Mode[] = [
-  { icon: 'barcode-outline', title: 'Escanear', desc: 'Leia o código de barras do produto' },
   { icon: 'search-outline', title: 'Pesquisar', desc: 'Busque por nome, ex.: pão de queijo', route: '/pesquisar' },
-  { icon: 'camera-outline', title: 'Foto (IA)', desc: 'Fotografe o prato e estime os macros' },
+  { icon: 'barcode-outline', title: 'Escanear', desc: 'Leia o código de barras do produto', soon: true },
+  { icon: 'camera-outline', title: 'Foto (IA)', desc: 'Fotografe o prato e estime os macros', soon: true },
 ];
 
 export default function AdicionarModal() {
+  // meal/voltarPara chegam quando o modal é aberto de dentro de uma refeição;
+  // são repassados adiante para o item cair na refeição certa e voltar para ela.
+  const { meal, voltarPara } = useLocalSearchParams<{ meal?: string; voltarPara?: string }>();
+
+  const openPesquisar = () =>
+    router.push({
+      pathname: '/pesquisar',
+      params: { ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
+    });
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -29,16 +45,24 @@ export default function AdicionarModal() {
         {MODES.map((m) => (
           <Pressable
             key={m.title}
-            style={styles.mode}
-            onPress={() => m.route && router.push(m.route as never)}>
+            disabled={m.soon}
+            style={[styles.mode, m.soon && styles.modeSoon]}
+            onPress={() => m.route === '/pesquisar' && openPesquisar()}>
             <View style={styles.modeIcon}>
-              <Ionicons name={m.icon} size={24} color={NoFoco.accent} />
+              <Ionicons name={m.icon} size={24} color={m.soon ? NoFoco.soft : NoFoco.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.modeTitle}>{m.title}</Text>
+              <View style={styles.modeTitleRow}>
+                <Text style={styles.modeTitle}>{m.title}</Text>
+                {m.soon && (
+                  <View style={styles.soonBadge}>
+                    <Text style={styles.soonText}>Em breve</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.modeDesc}>{m.desc}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={NoFoco.soft} />
+            {!m.soon && <Ionicons name="chevron-forward" size={20} color={NoFoco.soft} />}
           </Pressable>
         ))}
       </View>
@@ -74,6 +98,15 @@ const styles = StyleSheet.create({
     borderColor: NoFoco.hair,
     padding: Spacing.lg,
   },
+  modeSoon: { opacity: 0.55 },
+  modeTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  soonBadge: {
+    backgroundColor: NoFoco.surface2,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  soonText: { color: NoFoco.soft, fontSize: 10, fontWeight: '700' },
   modeIcon: {
     width: 46,
     height: 46,

@@ -67,7 +67,9 @@ Cada macronutriente tem **cor fixa em todo o app** — isso é linguagem visual,
 - **Refeições editáveis** (`src/store/meals.ts` + `src/app/refeicao-editar.tsx`): a pessoa cria, renomeia,
   reagenda e exclui refeições (Ceia, pré-treino, o que for). No Diário, **“Editar”** entra no modo de
   edição e **“+ Nova”** cria. A lista se reordena sozinha por horário.
-- **Adicionar:** modal com 3 modos → **Pesquisar** (funcional) · Escanear e Foto (ainda stubs).
+- **Adicionar:** modal com 3 modos → **Pesquisar** (funcional) · Escanear e Foto (stubs, marcados
+  "Em breve"). Aberto tanto pelo FAB central quanto pelo botão da própria refeição (levando `meal` +
+  `voltarPara` para o item cair na refeição certa e voltar para ela).
 - **Seletor de porção (E4.1)** (`src/app/porcao.tsx`): alterna **Unidade ⇆ Gramas**, converte o valor ao
   trocar de modo, recalcula macros/micros ao vivo, escolhe a refeição e **salva**.
 - **Detalhe da refeição** (`src/app/refeicao.tsx`): meta de **calorias e macros da refeição** (a fatia %
@@ -76,11 +78,21 @@ Cada macronutriente tem **cor fixa em todo o app** — isso é linguagem visual,
   recolhível com todos os nutrientes conhecidos, agrupados como rótulo brasileiro.
 - **Perfil + metas** (`src/app/(tabs)/perfil.tsx` + `src/lib/goal.ts`): **Mifflin-St Jeor** → TDEE →
   ajuste por objetivo; macros calculados; **distribuição por refeição personalizável** (% ajustável).
+  As seções são **retráteis** (`components/ui/collapsible-section.tsx`): só a meta diária fica sempre
+  visível; o resto vira uma lista curta de painéis que mostram um resumo quando fechados.
 - **Peso alvo + previsão** (`src/lib/forecast.ts`): informe o peso desejado e o app estima quanto tempo
   levaria, **simulando semana a semana** (a TMB cai junto com o peso, então a conta linear mente em prazo
   longo). Opcionalmente escolhe-se o **ritmo** (0,25 a 1 kg/semana), que passa a definir a meta calórica —
   com piso de segurança: nunca abaixo da TMB nem de 1.200 kcal (♀) / 1.500 (♂). Quando o piso trava, a
   previsão passa a mostrar o ritmo **real**, não o pedido. Avisa se o alvo cair abaixo de IMC 18,5.
+- **Histórico de peso** (`src/store/weight.ts` + `weight-chart.tsx` + `weight-evolution.tsx`): uma medição
+  por dia, com **gráfico de evolução** (SVG) e linha tracejada do alvo. Dá para registrar em **dia passado**
+  (esqueceu de marcar). O **peso atual** usado na meta e na previsão é a última medição do histórico —
+  não um número solto no perfil. Aceita decimais (78,5). **Mora na aba Relatórios**, não no Perfil (o
+  `WeightEvolution` é autossuficiente — lê/escreve os stores direto).
+- **Relatórios (E7, parcial)** (`src/app/(tabs)/relatorios.tsx`): saiu do placeholder. Tem **Calorias ·
+  últimos 7 dias** (barras de kcal/dia vs. linha da meta, média e dias registrados) e a **Evolução de
+  peso** embaixo. Falta o resto do E7 (semanal/mensal, quebra por macro).
 - **Orientação adaptativa** (`src/lib/pacing.ts`): distribui a meta entre refeições e, conforme a pessoa
   come mais/menos, **redistribui o orçamento restante** e mostra mensagens ("pode ingerir até ~X kcal aqui",
   "segure em ~Y", "no ritmo 👍") — sem tom de culpa.
@@ -127,13 +139,10 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
 
 ## Pendências / próximos passos
 
-> **Próximo passo recomendado: Relatórios (E7).** É o último "must have" do MVP que ainda é placeholder,
-> e o multi-dia acabou de destravá-lo — agora existe histórico para plotar.
-
-1. **Relatórios (E7)** — gráficos diário/semanal/mensal (tela ainda é placeholder). Agora **destravado**:
-   o histórico existe e `kcalByDay()` (em `store/diary.ts`) já entrega a série pronta. Já há
-   `react-native-svg` no projeto para desenhar. Atenção: sem dados de vários dias a tela parece vazia —
-   vale um estado inicial que explique isso em vez de um gráfico em branco.
+1. **Relatórios (E7) — completar** — já há **Calorias · últimos 7 dias** + **Evolução de peso**. Falta:
+   períodos semanal/mensal, quebra por **macro**, e talvez adesão à meta. `kcalByDay()` (em `store/diary.ts`)
+   entrega a série pronta; `react-native-svg` está no projeto (ver `weight-chart.tsx` para o padrão, e a
+   armadilha do `onLayout`).
 2. **Onboarding de 1ª vez (E1)** — hoje o app abre com um perfil padrão editável no Perfil.
 3. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
 4. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
@@ -143,10 +152,8 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    (Open Food Facts é ODbL, exige atribuição).
 6. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
    alerta de açúcar acima de 10% das calorias (referência OMS).
-7. **Histórico de peso** — hoje o peso é um número único no perfil. Guardar a série permitiria mostrar
-   progresso real contra o peso alvo (o plano prevê "evolução de peso" na fase 2).
-8. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
-9. **Lint** — sobra 1 erro herdado do template em `src/hooks/use-color-scheme.web.ts`
+7. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
+8. **Lint** — sobra 1 erro herdado do template em `src/hooks/use-color-scheme.web.ts`
    (`setState` dentro de `useEffect`). Nunca foi tocado; some com um `useSyncExternalStore` ou
    silenciando a regra naquele arquivo.
 
@@ -171,8 +178,14 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
 - Em nutriente opcional, **`undefined` ≠ `0`**: "não sabemos" não é "não tem". `macrosForGrams` preserva o
   `undefined` ao escalar, e `sumNutrient` (em `lib/nutrition.ts`) conta quantos itens tinham o dado — o
   total ganha `*` quando é um piso, não o valor real. Não troque isso por `?? 0`.
-- **No preview web o estado não sobrevive ao reload** (o AsyncStorage não persiste ali). Testar
-  persistência exige o device — no Expo Go funciona.
+- **No preview web o AsyncStorage persiste sim** (usa `localStorage`): o estado sobrevive ao reload, e dá
+  para inspecionar as chaves `nofoco-*` no DevTools. A instabilidade real do preview é o **HMR/Fast
+  Refresh**, que às vezes não recarrega um componente recém-criado (o gráfico novo não aparecia até um
+  reload forçado). Se algo novo não renderizar, force o reload. Mesmo assim, o alvo de verdade é o device.
+- **react-native-svg no web + `onLayout`:** um gráfico que só descobre a largura pelo `onLayout` pode
+  **não renderizar** (o `onLayout` não dispara a tempo e o SVG fica com largura 0). Dê uma largura inicial
+  — ex.: `Dimensions.get('window').width - margens` — e deixe o `onLayout` apenas refinar. Ver
+  `weight-chart.tsx`.
 - **Não use `Modal` do React Native nem `Alert.alert` para confirmar ação.** O `Alert` é no-op na web; o
   `Modal` monta **fora do `#root`** no react-native-web e, como o React só escuta eventos dentro do root,
   os botões ficam inertes no navegador (parece travado, sem erro no console). Use

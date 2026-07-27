@@ -290,7 +290,7 @@ export default function RefeicaoScreen() {
           style={styles.cta}
           onPress={() =>
             router.push({
-              pathname: '/pesquisar',
+              pathname: '/adicionar',
               params: { meal: key, voltarPara: 'refeicao' },
             })
           }>

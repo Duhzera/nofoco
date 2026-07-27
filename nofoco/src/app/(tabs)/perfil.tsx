@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Screen } from '@/components/ui/screen';
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
-import { formatFullDate } from '@/lib/date';
+import { formatFullDate, todayKey, type DayKey } from '@/lib/date';
 import { forecastToTarget, formatDuration } from '@/lib/forecast';
 import {
   ACTIVITY,
@@ -19,6 +21,7 @@ import {
 import { mealTarget } from '@/lib/pacing';
 import { pctSum, useMeals } from '@/store/meals';
 import { useProfile } from '@/store/profile';
+import { formatKg, latestWeight, parseKg, useWeight } from '@/store/weight';
 
 /** Formata kg no padrão brasileiro (0,42 kg). */
 function kg(n: number): string {
@@ -46,11 +49,17 @@ export default function PerfilScreen() {
   const meals = useMeals((s) => s.meals);
   const updateMeal = useMeals((s) => s.updateMeal);
   const resetMeals = useMeals((s) => s.resetMeals);
+  const log = useWeight((s) => s.log);
+  const setWeight = useWeight((s) => s.setWeight);
 
-  const goal = computeGoal(profile);
+  // peso atual = última medição do histórico; sem histórico, o valor herdado do perfil
+  const currentKg = latestWeight(log) ?? profile.weightKg;
+  const effProfile = { ...profile, weightKg: currentKg };
+
+  const goal = computeGoal(effProfile);
   const total = pctSum(meals);
 
-  const forecast = forecastToTarget(profile);
+  const forecast = forecastToTarget(effProfile);
   const targetBmi = profile.targetWeightKg
     ? bmi(profile.targetWeightKg, profile.heightCm)
     : null;
@@ -60,6 +69,13 @@ export default function PerfilScreen() {
   const num = (text: string) => {
     const n = parseInt(text.replace(/\D/g, ''), 10);
     return Number.isFinite(n) ? n : 0;
+  };
+
+  /** Registra uma medição. Se for hoje, também atualiza o peso do perfil. */
+  const logWeight = (day: DayKey, kg: number) => {
+    if (kg <= 0) return;
+    setWeight(day, kg);
+    if (day === todayKey()) setProfile({ weightKg: kg });
   };
 
   return (
@@ -84,23 +100,26 @@ export default function PerfilScreen() {
       </View>
 
       {/* objetivo */}
-      <Text style={styles.section}>Objetivo</Text>
-      <View style={styles.objGrid}>
-        {(Object.keys(OBJECTIVES) as Objective[]).map((k) => {
-          const on = profile.objective === k;
-          return (
-            <Pressable
-              key={k}
-              onPress={() => setProfile({ objective: k })}
-              style={[styles.objChip, on && styles.objOn]}>
-              <Text style={[styles.objText, on && styles.objTextOn]}>{OBJECTIVES[k].label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <CollapsibleSection title="Objetivo" summary={OBJECTIVES[profile.objective].label}>
+        <View style={styles.objGrid}>
+          {(Object.keys(OBJECTIVES) as Objective[]).map((k) => {
+            const on = profile.objective === k;
+            return (
+              <Pressable
+                key={k}
+                onPress={() => setProfile({ objective: k })}
+                style={[styles.objChip, on && styles.objOn]}>
+                <Text style={[styles.objText, on && styles.objTextOn]}>{OBJECTIVES[k].label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </CollapsibleSection>
 
       {/* dados */}
-      <Text style={styles.section}>Seus dados</Text>
+      <CollapsibleSection
+        title="Seus dados"
+        summary={`${profile.sex === 'M' ? 'M' : 'F'} · ${profile.age}a · ${profile.heightCm}cm · ${formatKg(currentKg)}kg`}>
       <View style={styles.card}>
         <View style={styles.fieldRow}>
           <Text style={styles.fieldLabel}>Sexo</Text>
@@ -120,11 +139,19 @@ export default function PerfilScreen() {
 
         <Field label="Idade" unit="anos" value={profile.age} onChange={(t) => setProfile({ age: num(t) })} />
         <Field label="Altura" unit="cm" value={profile.heightCm} onChange={(t) => setProfile({ heightCm: num(t) })} />
-        <Field label="Peso" unit="kg" value={profile.weightKg} onChange={(t) => setProfile({ weightKg: num(t) })} last />
+        <WeightField
+          label="Peso atual"
+          valueKg={currentKg}
+          onCommit={(kg) => logWeight(todayKey(), kg)}
+          last
+        />
       </View>
+      </CollapsibleSection>
 
       {/* peso alvo + previsão */}
-      <Text style={styles.section}>Peso alvo</Text>
+      <CollapsibleSection
+        title="Peso alvo"
+        summary={profile.targetWeightKg ? `${formatKg(profile.targetWeightKg)} kg` : 'não definido'}>
       <View style={styles.card}>
         <View style={styles.fieldRow}>
           <View style={{ flex: 1 }}>
@@ -166,7 +193,7 @@ export default function PerfilScreen() {
               <ForecastStat value={`${kg(forecast.avgWeeklyKg)} kg`} label="por semana (média)" />
               <ForecastStat value={`${forecast.weeks}`} label="semanas" />
               <ForecastStat
-                value={`${kg(Math.abs(profile.weightKg - (profile.targetWeightKg ?? 0)))} kg`}
+                value={`${kg(Math.abs(currentKg - (profile.targetWeightKg ?? 0)))} kg`}
                 label="a percorrer"
               />
             </View>
@@ -196,7 +223,7 @@ export default function PerfilScreen() {
       </View>
 
       {targetBmi !== null && bmiClass(targetBmi) === 'abaixo' && (
-        <View style={styles.warn}>
+        <View style={[styles.warn, { marginTop: Spacing.md }]}>
           <Ionicons name="alert-circle-outline" size={16} color={NoFoco.warning} />
           <Text style={styles.warnText}>
             Esse alvo fica abaixo da faixa de peso considerada saudável para a sua altura (IMC{' '}
@@ -205,11 +232,13 @@ export default function PerfilScreen() {
           </Text>
         </View>
       )}
+      </CollapsibleSection>
 
       {/* ritmo */}
       {canPace && (
-        <>
-          <Text style={styles.section}>Ritmo</Text>
+        <CollapsibleSection
+          title="Ritmo"
+          summary={profile.weeklyRateKg ? `${kg(profile.weeklyRateKg)} kg/sem` : 'Automático'}>
           <View style={styles.rateWrap}>
             <Pressable
               onPress={() => setProfile({ weeklyRateKg: undefined })}
@@ -239,7 +268,7 @@ export default function PerfilScreen() {
           </Text>
 
           {goal.capped && (
-            <View style={styles.warn}>
+            <View style={[styles.warn, { marginTop: Spacing.md }]}>
               <Ionicons name="shield-checkmark-outline" size={16} color={NoFoco.warning} />
               <Text style={styles.warnText}>
                 Esse ritmo exigiria comer menos do que seu corpo gasta em repouso. A meta foi travada
@@ -247,32 +276,33 @@ export default function PerfilScreen() {
               </Text>
             </View>
           )}
-        </>
+        </CollapsibleSection>
       )}
 
       {/* atividade */}
-      <Text style={styles.section}>Nível de atividade</Text>
-      <View style={styles.actWrap}>
-        {(Object.keys(ACTIVITY) as Activity[]).map((k) => {
-          const on = profile.activity === k;
-          return (
-            <Pressable
-              key={k}
-              onPress={() => setProfile({ activity: k })}
-              style={[styles.actChip, on && styles.chipOn]}>
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>{ACTIVITY[k].label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <CollapsibleSection title="Nível de atividade" summary={ACTIVITY[profile.activity].label}>
+        <View style={styles.actWrap}>
+          {(Object.keys(ACTIVITY) as Activity[]).map((k) => {
+            const on = profile.activity === k;
+            return (
+              <Pressable
+                key={k}
+                onPress={() => setProfile({ activity: k })}
+                style={[styles.actChip, on && styles.chipOn]}>
+                <Text style={[styles.chipText, on && styles.chipTextOn]}>{ACTIVITY[k].label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </CollapsibleSection>
 
       {/* distribuição por refeição */}
-      <View style={styles.splitHeader}>
-        <Text style={styles.section}>Distribuição por refeição</Text>
+      <CollapsibleSection
+        title="Distribuição por refeição"
+        summary={`${meals.length} ${meals.length === 1 ? 'refeição' : 'refeições'}`}>
         <Text style={styles.reset} onPress={resetMeals}>
           Restaurar padrão
         </Text>
-      </View>
       <View style={styles.card}>
         {meals.map((m, i) => (
           <View key={m.id} style={[styles.splitRow, i > 0 && styles.splitBorder]}>
@@ -315,6 +345,7 @@ export default function PerfilScreen() {
           : ''}
         Para criar, renomear ou excluir refeições, use “Editar” na lista de refeições do Diário.
       </Text>
+      </CollapsibleSection>
 
       <View style={styles.disclaimer}>
         <Ionicons name="information-circle-outline" size={16} color={NoFoco.soft} />
@@ -352,6 +383,42 @@ function Field({
           selectTextOnFocus
         />
         <Text style={styles.fieldUnit}>{unit}</Text>
+      </View>
+    </View>
+  );
+}
+
+/** Campo de peso: aceita decimal (78,5) e mantém o texto enquanto se digita a vírgula. */
+function WeightField({
+  label,
+  valueKg,
+  onCommit,
+  last,
+}: {
+  label: string;
+  valueKg: number;
+  onCommit: (kg: number) => void;
+  last?: boolean;
+}) {
+  const [text, setText] = useState(formatKg(valueKg));
+  return (
+    <View style={[styles.fieldRow, !last && styles.fieldBorder]}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={styles.fieldInputWrap}>
+        <TextInput
+          value={text}
+          onChangeText={(t) => {
+            const cleaned = t.replace(/[^\d.,]/g, '');
+            setText(cleaned);
+            const kg = parseKg(cleaned);
+            if (kg > 0) onCommit(kg);
+          }}
+          keyboardType="decimal-pad"
+          style={styles.fieldInput}
+          maxLength={5}
+          selectTextOnFocus
+        />
+        <Text style={styles.fieldUnit}>kg</Text>
       </View>
     </View>
   );
@@ -470,6 +537,7 @@ const styles = StyleSheet.create({
     borderTopColor: NoFoco.faint,
     paddingVertical: Spacing.md,
   },
+
 
   warn: {
     flexDirection: 'row',
