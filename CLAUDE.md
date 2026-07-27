@@ -57,6 +57,12 @@ Cada macronutriente tem **cor fixa em todo o app** — isso é linguagem visual,
 ## O que já está construído e funcionando
 
 - **Navegação:** abas com **gesto de swipe** (pager) + tab bar customizada com **FAB "+" central**.
+- **Onboarding de 1ª vez (E1)** (`src/app/onboarding.tsx`): na primeira abertura, coleta objetivo, sexo,
+  idade, altura, peso, atividade e peso-alvo, com **prévia da meta ao vivo**, e só então entra no app.
+  O peso informado já vira a **primeira medição do histórico**. Gate: `onboarded` em `store/profile`
+  (com `hasHydrated` para o splash segurar até a persistência carregar); `(tabs)/_layout` faz
+  `<Redirect href="/onboarding" />` enquanto `!onboarded`. Quem já tinha perfil salvo **não** revê o
+  fluxo (migração `version:1` marca `onboarded:true`). Para testar de novo, limpe as chaves `nofoco-*`.
 - **Diário** (`src/app/(tabs)/index.tsx`): medidor de calorias animado, barras de macro, tira semanal,
   lista de refeições com **consumido / alvo**, e o **banner do treinador**.
 - **Multi-dia** (`src/lib/date.ts` + `src/store/day.ts` + `src/components/ui/week-strip.tsx`): o diário
@@ -143,17 +149,16 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    períodos semanal/mensal, quebra por **macro**, e talvez adesão à meta. `kcalByDay()` (em `store/diary.ts`)
    entrega a série pronta; `react-native-svg` está no projeto (ver `weight-chart.tsx` para o padrão, e a
    armadilha do `onLayout`).
-2. **Onboarding de 1ª vez (E1)** — hoje o app abre com um perfil padrão editável no Perfil.
-3. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
-4. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
-5. **Backend** (Supabase) + **dados nutricionais reais** — ver §4.4.1 do plano:
+2. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
+3. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
+4. **Backend** (Supabase) + **dados nutricionais reais** — ver §4.4.1 do plano:
    base própria semeada por **TACO + TBCA** (Brasil, estáticos) + **Open Food Facts** (barcode, API pública
    sem chave) + **USDA FDC** (micros). Nunca depender de API de terceiro em tempo real. Checar licenças
    (Open Food Facts é ODbL, exige atribuição).
-6. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
+5. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
    alerta de açúcar acima de 10% das calorias (referência OMS).
-7. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
-8. **Lint** — sobra 1 erro herdado do template em `src/hooks/use-color-scheme.web.ts`
+6. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
+7. **Lint** — sobra 1 erro herdado do template em `src/hooks/use-color-scheme.web.ts`
    (`setState` dentro de `useEffect`). Nunca foi tocado; some com um `useSyncExternalStore` ou
    silenciando a regra naquele arquivo.
 

@@ -1,8 +1,9 @@
-import { withLayoutContext } from 'expo-router';
+import { Redirect, withLayoutContext } from 'expo-router';
 import { createMaterialTopTabNavigator } from 'expo-router/js-top-tabs';
 
 import { TabBar, type TabBarProps } from '@/components/tab-bar';
 import { NoFoco } from '@/constants/theme';
+import { useProfile } from '@/store/profile';
 
 const { Navigator } = createMaterialTopTabNavigator();
 
@@ -10,6 +11,11 @@ const { Navigator } = createMaterialTopTabNavigator();
 const SwipeTabs = withLayoutContext(Navigator);
 
 export default function TabsLayout() {
+  const onboarded = useProfile((s) => s.onboarded);
+
+  // primeira abertura: manda para o fluxo de configuração antes de mostrar as abas
+  if (!onboarded) return <Redirect href="/onboarding" />;
+
   return (
     <SwipeTabs
       tabBarPosition="bottom"

@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { NoFoco } from '@/constants/theme';
+import { useProfile } from '@/store/profile';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,9 +23,15 @@ const NoFocoNavTheme = {
 };
 
 export default function RootLayout() {
+  const hasHydrated = useProfile((s) => s.hasHydrated);
+
+  // segura o splash até a persistência carregar — assim o gate de onboarding
+  // (em (tabs)/_layout) decide já com o valor real, sem piscar o Diário antes.
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (hasHydrated) SplashScreen.hideAsync();
+  }, [hasHydrated]);
+
+  if (!hasHydrated) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: NoFoco.bg }}>
@@ -36,6 +43,7 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: NoFoco.bg },
           }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
           <Stack.Screen
             name="adicionar"
             options={{ presentation: 'modal', title: 'Adicionar alimento' }}
