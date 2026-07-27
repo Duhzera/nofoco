@@ -96,9 +96,12 @@ Cada macronutriente tem **cor fixa em todo o app** — isso é linguagem visual,
   (esqueceu de marcar). O **peso atual** usado na meta e na previsão é a última medição do histórico —
   não um número solto no perfil. Aceita decimais (78,5). **Mora na aba Relatórios**, não no Perfil (o
   `WeightEvolution` é autossuficiente — lê/escreve os stores direto).
-- **Relatórios (E7, parcial)** (`src/app/(tabs)/relatorios.tsx`): saiu do placeholder. Tem **Calorias ·
-  últimos 7 dias** (barras de kcal/dia vs. linha da meta, média e dias registrados) e a **Evolução de
-  peso** embaixo. Falta o resto do E7 (semanal/mensal, quebra por macro).
+- **Relatórios (E7)** (`src/app/(tabs)/relatorios.tsx`): montado igual ao mock do plano. Seletor
+  **Diário / Semanal / Mensal** (janela de 1 / 7 / 30 dias), barras de **calorias** (por refeição no
+  Diário, por dia no resto), **rosca de macros** (% das calorias + gramas) em SVG, e **micros** (Fibra,
+  Cálcio, Ferro, Vit. C) como % de uma recomendação diária de referência (`RDA` no arquivo — genérica, não
+  por sexo ainda). A **Evolução de peso** (`WeightEvolution`) fica embaixo. Tudo é média por dia registrado
+  na janela (dia sem registro não conta).
 - **Orientação adaptativa** (`src/lib/pacing.ts`): distribui a meta entre refeições e, conforme a pessoa
   come mais/menos, **redistribui o orçamento restante** e mostra mensagens ("pode ingerir até ~X kcal aqui",
   "segure em ~Y", "no ritmo 👍") — sem tom de culpa.
@@ -145,10 +148,10 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
 
 ## Pendências / próximos passos
 
-1. **Relatórios (E7) — completar** — já há **Calorias · últimos 7 dias** + **Evolução de peso**. Falta:
-   períodos semanal/mensal, quebra por **macro**, e talvez adesão à meta. `kcalByDay()` (em `store/diary.ts`)
-   entrega a série pronta; `react-native-svg` está no projeto (ver `weight-chart.tsx` para o padrão, e a
-   armadilha do `onLayout`).
+1. **Relatórios (E7) — refinos** — o grosso está feito (Diário/Semanal/Mensal, calorias, rosca de macros,
+   micros, evolução). Faltam melhorias: **RDA de micros por sexo/idade** (hoje é referência genérica),
+   quebra de macros por refeição, adesão à meta, e talvez a rosca começar às 12h (hoje começa às 3h para
+   evitar o aviso `transform-origin` do react-native-svg no web — ver comentário em `MacroDonut`).
 2. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
 3. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
 4. **Backend** (Supabase) + **dados nutricionais reais** — ver §4.4.1 do plano:

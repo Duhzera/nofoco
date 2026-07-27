@@ -101,6 +101,16 @@ export function formatFullDate(key: DayKey): string {
   return `${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
+/** "16 – 22 de maio" (mesmo mês) ou "28 abr – 4 mai" (meses diferentes). */
+export function formatRange(startKey: DayKey, endKey: DayKey): string {
+  const a = parseKey(startKey);
+  const b = parseKey(endKey);
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
+    return `${a.getDate()} – ${b.getDate()} de ${MONTHS[b.getMonth()]}`;
+  }
+  return `${a.getDate()} de ${MONTHS[a.getMonth()].slice(0, 3)} – ${b.getDate()} de ${MONTHS[b.getMonth()].slice(0, 3)}`;
+}
+
 /** "Julho" ou "Jun — Jul" quando a semana atravessa dois meses. */
 export function formatWeekRange(key: DayKey): string {
   const days = weekDays(key);
