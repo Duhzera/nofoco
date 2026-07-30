@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -20,6 +21,7 @@ import {
 } from '@/lib/goal';
 import { mealTarget } from '@/lib/pacing';
 import { pctSum, useMeals } from '@/store/meals';
+import { useAuth } from '@/store/auth';
 import { useProfile } from '@/store/profile';
 import { formatKg, latestWeight, parseKg, useWeight } from '@/store/weight';
 
@@ -51,6 +53,7 @@ export default function PerfilScreen() {
   const resetMeals = useMeals((s) => s.resetMeals);
   const log = useWeight((s) => s.log);
   const setWeight = useWeight((s) => s.setWeight);
+  const authUser = useAuth((s) => s.user);
 
   // peso atual = última medição do histórico; sem histórico, o valor herdado do perfil
   const currentKg = latestWeight(log) ?? profile.weightKg;
@@ -98,6 +101,22 @@ export default function PerfilScreen() {
           <MacroPill value={`${goal.fat}g`} label="Gordura" color={NoFoco.fat} />
         </View>
       </View>
+
+      {/* conta (opcional) */}
+      <Pressable style={styles.account} onPress={() => router.push('/conta')}>
+        <Ionicons
+          name={authUser ? 'cloud-done-outline' : 'cloud-outline'}
+          size={20}
+          color={authUser ? NoFoco.accent : NoFoco.soft}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.accountTitle}>{authUser ? 'Conta conectada' : 'Entrar / criar conta'}</Text>
+          <Text style={styles.accountSub} numberOfLines={1}>
+            {authUser ? authUser.email : 'Backup e sincronização na nuvem'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={NoFoco.soft} />
+      </Pressable>
 
       {/* objetivo */}
       <CollapsibleSection title="Objetivo" summary={OBJECTIVES[profile.objective].label}>
@@ -463,6 +482,20 @@ const styles = StyleSheet.create({
   how: { backgroundColor: NoFoco.surface2, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 5, marginTop: Spacing.sm },
   howText: { color: NoFoco.soft, fontSize: 10.5, fontVariant: ['tabular-nums'] },
   goalMacros: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
+  account: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: NoFoco.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: NoFoco.hair,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  accountTitle: { color: NoFoco.ink, fontSize: 13.5, fontWeight: '700' },
+  accountSub: { color: NoFoco.soft, fontSize: 11.5, marginTop: 1 },
   macroPill: { alignItems: 'center', flexDirection: 'row', gap: 5, backgroundColor: NoFoco.surface2, borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 6 },
   macroDot: { width: 7, height: 7, borderRadius: 4 },
   macroPillValue: { color: NoFoco.ink, fontSize: 12, fontWeight: '800', fontVariant: ['tabular-nums'] },

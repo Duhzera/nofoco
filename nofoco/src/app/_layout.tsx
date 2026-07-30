@@ -44,6 +44,7 @@ export default function RootLayout() {
           }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="conta" options={{ presentation: 'modal', title: 'Conta' }} />
           <Stack.Screen
             name="adicionar"
             options={{ presentation: 'modal', title: 'Adicionar alimento' }}
