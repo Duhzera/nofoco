@@ -15,7 +15,7 @@ type Mode = {
 
 const MODES: Mode[] = [
   { icon: 'search-outline', title: 'Pesquisar', desc: 'Busque por nome, ex.: pão de queijo', route: '/pesquisar' },
-  { icon: 'barcode-outline', title: 'Escanear', desc: 'Leia o código de barras do produto', soon: true },
+  { icon: 'barcode-outline', title: 'Escanear', desc: 'Leia o código de barras do produto', route: '/escanear' },
   { icon: 'camera-outline', title: 'Foto (IA)', desc: 'Fotografe o prato e estime os macros', soon: true },
 ];
 
@@ -24,9 +24,9 @@ export default function AdicionarModal() {
   // são repassados adiante para o item cair na refeição certa e voltar para ela.
   const { meal, voltarPara } = useLocalSearchParams<{ meal?: string; voltarPara?: string }>();
 
-  const openPesquisar = () =>
+  const open = (route: string) =>
     router.push({
-      pathname: '/pesquisar',
+      pathname: route as '/pesquisar' | '/escanear',
       params: { ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
     });
 
@@ -47,7 +47,7 @@ export default function AdicionarModal() {
             key={m.title}
             disabled={m.soon}
             style={[styles.mode, m.soon && styles.modeSoon]}
-            onPress={() => m.route === '/pesquisar' && openPesquisar()}>
+            onPress={() => m.route && open(m.route)}>
             <View style={styles.modeIcon}>
               <Ionicons name={m.icon} size={24} color={m.soon ? NoFoco.soft : NoFoco.accent} />
             </View>

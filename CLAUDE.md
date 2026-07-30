@@ -161,21 +161,28 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    quebra de macros por refeição, adesão à meta, e talvez a rosca começar às 12h (hoje começa às 3h para
    evitar o aviso `transform-origin` do react-native-svg no web — ver comentário em `MacroDonut`).
 2. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
-3. **Escanear (código de barras)** — a **fonte de dados está pronta**, falta só o leitor (câmera).
-   `src/services/products.ts` expõe `lookupProduct(barcode) → Food | null`: procura na tabela `products`
-   do Supabase (cache compartilhado; rode `supabase/products.sql`), cai no **Open Food Facts ao vivo**
-   (API pública, ~3 mi de produtos, sem chave) e grava de volta no cache (só logado — RLS). O produto é
-   "lembrado" via `rememberFood` para a tela de porção resolvê-lo por id (`off-<código>`). **Falta o leitor:**
-   `expo-camera` (lê barcode, roda no Expo Go), permissão de câmera, e no `onBarcodeScanned` chamar
-   `lookupProduct` → se achou, `router.push('/porcao', { id, meal, voltarPara })`; se `null`, fallback
-   (busca/manual). Mapeamento OFF validado (valores por 100 g; minerais/vitaminas vêm em gramas → convertidos;
-   ausentes viram `undefined`; fibra às vezes falta → 0). Atribuição OFF (ODbL) onde os dados aparecerem.
-   Ligar o botão "Escanear" em `src/app/adicionar.tsx` (hoje `soon: true`).
+3. **Escanear (código de barras)** — **IMPLEMENTADO.** Tela `src/app/escanear.tsx` (`expo-camera`
+   `CameraView` + `useCameraPermissions`; barcodeTypes ean13/ean8/upc/code128/etc.; lanterna via
+   `enableTorch`). Ao ler chama `lookupProduct` (services/products): achou → `router.replace('/porcao',
+   {id, meal, voltarPara})`; não achou → oferece "escanear de novo" / "buscar por nome". Tem **modo manual**
+   (digitar o código) como fallback — é o que roda no **web** (sem câmera) e o que testei: código da Nutella
+   `3017620422003` → OFF ao vivo → 539 kcal/100 g com macros certos → tela de porção. Botão "Escanear" ligado
+   em `adicionar.tsx` (rota `/escanear`); plugin `expo-camera` no `app.json` (permissão de câmera). **Falta
+   testar o scan por câmera no celular** (Expo Go) — só dá no device. Atribuição OFF (ODbL) onde os dados
+   aparecerem. Cache Supabase (`products`) grava o que é escaneado (só logado — RLS). **Refino futuro:**
+   quando `lookupProduct` grava no cache, hoje só manda barcode/name/brand/per100/... — conferir se todos os
+   campos que a tela usa estão indo.
 4. **Foto com IA** — ainda stub (é a última fase; precisa de endpoint no backend).
-5. **Sincronização (Supabase)** — o **login já funciona** (feito); falta **subir/baixar os dados**. Próximo
-   passo concreto: escrever o **schema** (tabelas de perfil, peso, refeições e diário por `user_id` + RLS)
-   pro dono rodar no SQL Editor, e a lógica de push/pull offline-first. Depois: **TBCA/USDA** como
-   complemento de dados. (O cache de barcode `products` já tem schema — ver item 3.)
+5. **Sincronização (Supabase)** — **IMPLEMENTADA (v1)**. Schema em `supabase/schema.sql` (tabelas
+   `profiles`, `meals`, `weight_log`, `diary_items` por `user_id` + RLS de dono) — **rode no SQL Editor
+   antes de usar**. Lógica em `src/services/sync.ts` (`pushAll`/`pullAll`, modelo espelho: upsert + apaga o
+   que sumiu localmente) e `src/store/sync.ts` (no login casa o aparelho com a conta: remoto tem dados →
+   pull, senão → push; auto-push com debounce em qualquer mudança; `boundUser` persistido evita puxar por
+   cima de mudança offline no mesmo aparelho). UI na tela `conta.tsx` (status + "Sincronizar agora",
+   "Restaurar", "Sair"). Limitação conhecida: é last-write-wins por aparelho, não merge por campo — dois
+   aparelhos editando offline ao mesmo tempo, um sobrescreve o outro. **Falta:** rodar o schema no Supabase
+   e testar o round-trip logado (não deu pra testar aqui sem criar conta). Depois: **TBCA/USDA** como
+   complemento. (Cache de barcode `products` já tem schema — item 3.)
 6. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
    alerta de açúcar acima de 10% das calorias (referência OMS).
 7. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
