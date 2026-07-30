@@ -113,9 +113,12 @@ export const useDiary = create<DiaryState>()(
   ),
 );
 
-const ZERO: Nutrients = { kcal: 0, carb: 0, protein: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0 };
+const ZERO: Nutrients = { kcal: 0, carb: 0, protein: 0, fat: 0, fiber: 0, sodium: 0 };
 
-/** Soma os campos obrigatórios. Para a tabela completa, ver lib/nutrition. */
+/**
+ * Soma os campos obrigatórios (kcal + macros + sódio). Açúcar e demais opcionais
+ * NÃO entram aqui — para a tabela completa (que trata `undefined`), ver lib/nutrition.
+ */
 export function sumMacros(items: DiaryItem[]): Nutrients {
   return items.reduce<Nutrients>(
     (acc, it) => ({
@@ -123,7 +126,6 @@ export function sumMacros(items: DiaryItem[]): Nutrients {
       carb: round1(acc.carb + it.macros.carb),
       protein: round1(acc.protein + it.macros.protein),
       fat: round1(acc.fat + it.macros.fat),
-      sugar: round1(acc.sugar + it.macros.sugar),
       fiber: round1(acc.fiber + it.macros.fiber),
       sodium: acc.sodium + it.macros.sodium,
     }),

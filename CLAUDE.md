@@ -106,11 +106,14 @@ Cada macronutriente tem **cor fixa em todo o app** — isso é linguagem visual,
   come mais/menos, **redistribui o orçamento restante** e mostra mensagens ("pode ingerir até ~X kcal aqui",
   "segure em ~Y", "no ritmo 👍") — sem tom de culpa.
 
-**Dados de alimentos:** hoje são **mock** em `src/data/foods.ts` (modelo já correto: valores por 100 g +
-`unitGrams`). Integração com dados reais ainda não foi feita. O tipo `Nutrients` tem 7 campos
-obrigatórios (kcal, carbo, proteína, gordura, açúcar, fibra, sódio) e o resto **opcional** — saturadas,
-trans, mono, poli, colesterol, minerais e vitaminas. Os valores mock preenchidos vieram de TACO/rótulo e
-**precisam ser conferidos** quando a base real entrar.
+**Dados de alimentos:** base **real da TACO** (597 alimentos BR) em `src/data/taco.ts`, gerada a partir
+do dump público [danperrout/tabelataco](https://github.com/danperrout/tabelataco) por um script de
+transformação (o script vive no scratchpad; se precisar regerar, ver o cabeçalho de `taco.ts`). Somada a
+uns poucos **curados** à mão em `src/data/foods.ts` (com porções caseiras, marca e exemplo de barcode),
+que aparecem primeiro na busca. Tudo por 100 g/ml. `searchFoods` limita a 60 resultados. Campos que a
+TACO não traz — **açúcar** (a tabela não tem essa coluna), vit. D, e vários "Tr"/"NA" — ficam `undefined`
+e aparecem como "—". Por isso `sugar` virou **opcional** no `Nutrients` (os 6 obrigatórios são kcal,
+carbo, proteína, gordura, fibra, sódio); `sumMacros` não soma açúcar. Atribuição: TACO — UNICAMP/NEPA.
 
 ## Onde paramos — sessão de 23/07/2026
 
@@ -154,10 +157,10 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    evitar o aviso `transform-origin` do react-native-svg no web — ver comentário em `MacroDonut`).
 2. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
 3. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
-4. **Backend** (Supabase) + **dados nutricionais reais** — ver §4.4.1 do plano:
-   base própria semeada por **TACO + TBCA** (Brasil, estáticos) + **Open Food Facts** (barcode, API pública
-   sem chave) + **USDA FDC** (micros). Nunca depender de API de terceiro em tempo real. Checar licenças
-   (Open Food Facts é ODbL, exige atribuição).
+4. **Backend + sync + mais dados** — a **TACO já está local** (feito). Falta, na ordem do plano:
+   **Supabase** (conta é você quem cria; eu faço schema/integração) para **login + sync/backup** (E9,
+   hoje tudo mora no device) e para o **código de barras** (Open Food Facts — API pública + cache). Depois
+   **TBCA** (mais itens BR) e **USDA** (micros) como complemento. OFF é ODbL: exige atribuição.
 5. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
    alerta de açúcar acima de 10% das calorias (referência OMS).
 6. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.

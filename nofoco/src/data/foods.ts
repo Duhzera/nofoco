@@ -1,24 +1,28 @@
 /**
- * Dados de alimentos (mock) — estrutura alinhada ao modelo do plano (§5 e E4.1).
- * Tudo é normalizado por 100 g/ml; o app deriva os macros a partir do peso escolhido.
- * No futuro estes dados virão da base própria (TACO/TBCA/Open Food Facts) — ver §4.4.1.
+ * Dados de alimentos — modelo alinhado ao plano (§5 e E4.1). Tudo por 100 g/ml;
+ * o app deriva os macros a partir do peso escolhido. A base vem da TACO (data/taco.ts,
+ * ~600 itens BR reais) somada a alguns alimentos curados com porções/marcas.
+ * Próximas fontes (barcode/OFF, micros/USDA) entram via backend — ver §4.4.1.
  */
+import { TACO_FOODS } from './taco';
 
 /**
  * Tabela nutricional de um alimento.
  *
- * Os sete primeiros campos são obrigatórios — toda fonte de dados os traz.
+ * Os seis primeiros campos são obrigatórios — toda fonte traz macros e sódio.
  * O resto é opcional de propósito: `undefined` significa "não sabemos", e é
  * diferente de zero. A UI mostra "—" nesses casos em vez de fingir um valor.
+ * (Açúcar é opcional porque a TACO não traz essa coluna — ver data/taco.ts.)
  */
 export type Nutrients = {
   kcal: number;
   carb: number;
   protein: number;
   fat: number;
-  sugar: number;
   fiber: number;
   sodium: number; // mg
+
+  sugar?: number; // g — nem toda fonte informa
 
   // gorduras detalhadas (g)
   satFat?: number;
@@ -57,11 +61,11 @@ export type Food = {
 };
 
 /**
- * NOTA: enquanto a base própria não existe, estes valores são aproximações de
- * rótulo/TACO e servem só para desenvolver a interface. Campos que não temos
- * confiança de preencher ficam ausentes de propósito — ver §4.4.1 do plano.
+ * Alimentos curados à mão (com porções caseiras, marcas e exemplos de barcode).
+ * A base real vem da TACO (data/taco.ts); estes ficam na frente por terem porções
+ * melhores. Alguns campos aqui são aproximações de rótulo — conferir na fonte real.
  */
-export const FOODS: Food[] = [
+const CURATED: Food[] = [
   {
     id: 'pao-queijo-tradicional',
     name: 'Pão de queijo tradicional',
@@ -181,6 +185,12 @@ export const FOODS: Food[] = [
   },
 ];
 
+/** Base de busca: curados na frente, base TACO (~600 itens) em seguida. */
+export const FOODS: Food[] = [...CURATED, ...TACO_FOODS];
+
+/** Máximo de resultados devolvidos à busca (a base TACO tem ~600 itens). */
+const SEARCH_LIMIT = 60;
+
 /** Normaliza texto para busca (sem acento, minúsculo). */
 export function normalize(s: string): string {
   return s
@@ -192,8 +202,10 @@ export function normalize(s: string): string {
 
 export function searchFoods(query: string): Food[] {
   const q = normalize(query);
-  if (!q) return FOODS;
-  return FOODS.filter((f) => normalize(f.name).includes(q) || (f.brand && normalize(f.brand).includes(q)));
+  const base = q
+    ? FOODS.filter((f) => normalize(f.name).includes(q) || (f.brand && normalize(f.brand).includes(q)))
+    : FOODS;
+  return base.slice(0, SEARCH_LIMIT);
 }
 
 export function getFood(id: string): Food | undefined {
@@ -216,10 +228,10 @@ export function macrosForGrams(f: Food, grams: number): Nutrients {
     carb: round1(p.carb * k),
     protein: round1(p.protein * k),
     fat: round1(p.fat * k),
-    sugar: round1(p.sugar * k),
     fiber: round1(p.fiber * k),
     sodium: Math.round(p.sodium * k),
 
+    sugar: scaleOpt(p.sugar, k),
     satFat: scaleOpt(p.satFat, k),
     transFat: scaleOpt(p.transFat, k),
     monoFat: scaleOpt(p.monoFat, k),
