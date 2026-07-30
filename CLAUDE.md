@@ -161,15 +161,25 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    quebra de macros por refeição, adesão à meta, e talvez a rosca começar às 12h (hoje começa às 3h para
    evitar o aviso `transform-origin` do react-native-svg no web — ver comentário em `MacroDonut`).
 2. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
-3. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
-4. **Sincronização (Supabase)** — o **login já funciona** (feito); falta **subir/baixar os dados**. Próximo
+3. **Escanear (código de barras)** — a **fonte de dados está pronta**, falta só o leitor (câmera).
+   `src/services/products.ts` expõe `lookupProduct(barcode) → Food | null`: procura na tabela `products`
+   do Supabase (cache compartilhado; rode `supabase/products.sql`), cai no **Open Food Facts ao vivo**
+   (API pública, ~3 mi de produtos, sem chave) e grava de volta no cache (só logado — RLS). O produto é
+   "lembrado" via `rememberFood` para a tela de porção resolvê-lo por id (`off-<código>`). **Falta o leitor:**
+   `expo-camera` (lê barcode, roda no Expo Go), permissão de câmera, e no `onBarcodeScanned` chamar
+   `lookupProduct` → se achou, `router.push('/porcao', { id, meal, voltarPara })`; se `null`, fallback
+   (busca/manual). Mapeamento OFF validado (valores por 100 g; minerais/vitaminas vêm em gramas → convertidos;
+   ausentes viram `undefined`; fibra às vezes falta → 0). Atribuição OFF (ODbL) onde os dados aparecerem.
+   Ligar o botão "Escanear" em `src/app/adicionar.tsx` (hoje `soon: true`).
+4. **Foto com IA** — ainda stub (é a última fase; precisa de endpoint no backend).
+5. **Sincronização (Supabase)** — o **login já funciona** (feito); falta **subir/baixar os dados**. Próximo
    passo concreto: escrever o **schema** (tabelas de perfil, peso, refeições e diário por `user_id` + RLS)
-   pro dono rodar no SQL Editor, e a lógica de push/pull offline-first. Depois: **código de barras** (Open
-   Food Facts, API pública + cache), e **TBCA/USDA** como complemento de dados. OFF é ODbL: exige atribuição.
-5. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
+   pro dono rodar no SQL Editor, e a lógica de push/pull offline-first. Depois: **TBCA/USDA** como
+   complemento de dados. (O cache de barcode `products` já tem schema — ver item 3.)
+6. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
    alerta de açúcar acima de 10% das calorias (referência OMS).
-6. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
-7. **Lint** — sobra 1 erro herdado do template em `src/hooks/use-color-scheme.web.ts`
+7. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
+8. **Lint** — sobra 1 erro herdado do template em `src/hooks/use-color-scheme.web.ts`
    (`setState` dentro de `useEffect`). Nunca foi tocado; some com um `useSyncExternalStore` ou
    silenciando a regra naquele arquivo.
 

@@ -208,8 +208,20 @@ export function searchFoods(query: string): Food[] {
   return base.slice(0, SEARCH_LIMIT);
 }
 
+/**
+ * Produtos vindos do leitor de código de barras (Open Food Facts / cache Supabase)
+ * não estão na lista estática. O serviço de barcode os "lembra" aqui em runtime para
+ * que `getFood` (usado pela tela de porção) consiga resolvê-los pelo id. Ver
+ * services/products.ts.
+ */
+const remembered = new Map<string, Food>();
+
+export function rememberFood(food: Food): void {
+  remembered.set(food.id, food);
+}
+
 export function getFood(id: string): Food | undefined {
-  return FOODS.find((f) => f.id === id);
+  return FOODS.find((f) => f.id === id) ?? remembered.get(id);
 }
 
 /** Escala um campo opcional mantendo `undefined` quando o dado não existe. */
