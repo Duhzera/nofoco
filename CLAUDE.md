@@ -105,6 +105,11 @@ Cada macronutriente tem **cor fixa em todo o app** — isso é linguagem visual,
 - **Orientação adaptativa** (`src/lib/pacing.ts`): distribui a meta entre refeições e, conforme a pessoa
   come mais/menos, **redistribui o orçamento restante** e mostra mensagens ("pode ingerir até ~X kcal aqui",
   "segure em ~Y", "no ritmo 👍") — sem tom de culpa.
+- **Backend / conta (Supabase)** (`src/services/supabase.ts` + `src/store/auth.ts` + `src/app/conta.tsx`):
+  login/criar conta por **e-mail e senha**, **opcional** (o app funciona local sem conta). Testado: signup
+  chega no Supabase e o fluxo de confirmação de e-mail funciona. Cliente lê `EXPO_PUBLIC_SUPABASE_*` do
+  `.env.local` (fora do Git). Projeto Supabase: `cjnmdyvojibscccbomrj` (região São Paulo). **Falta a
+  sincronização** dos dados (hoje só autentica; diário/peso/perfil ainda moram no device).
 
 **Dados de alimentos:** base **real da TACO** (597 alimentos BR) em `src/data/taco.ts`, gerada a partir
 do dump público [danperrout/tabelataco](https://github.com/danperrout/tabelataco) por um script de
@@ -157,10 +162,10 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    evitar o aviso `transform-origin` do react-native-svg no web — ver comentário em `MacroDonut`).
 2. **Aba Alimentos** — ainda é placeholder (favoritos / recentes / base).
 3. **Escanear (código de barras)** e **Foto com IA** — ainda stubs (foto por IA é a última fase).
-4. **Backend + sync + mais dados** — a **TACO já está local** (feito). Falta, na ordem do plano:
-   **Supabase** (conta é você quem cria; eu faço schema/integração) para **login + sync/backup** (E9,
-   hoje tudo mora no device) e para o **código de barras** (Open Food Facts — API pública + cache). Depois
-   **TBCA** (mais itens BR) e **USDA** (micros) como complemento. OFF é ODbL: exige atribuição.
+4. **Sincronização (Supabase)** — o **login já funciona** (feito); falta **subir/baixar os dados**. Próximo
+   passo concreto: escrever o **schema** (tabelas de perfil, peso, refeições e diário por `user_id` + RLS)
+   pro dono rodar no SQL Editor, e a lógica de push/pull offline-first. Depois: **código de barras** (Open
+   Food Facts, API pública + cache), e **TBCA/USDA** como complemento de dados. OFF é ODbL: exige atribuição.
 5. **Metas — refinos do plano §E2**: override manual dos macros, meta de fibra (~14 g/1000 kcal) e
    alerta de açúcar acima de 10% das calorias (referência OMS).
 6. **Aviso de ritmo agressivo** — ver "Decisão pendente" acima; falta o dono confirmar.
@@ -214,7 +219,7 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
 
 ```bash
 cd nofoco
-npm install     # só na primeira vez / após clonar
+npm install     # sempre após clonar OU quando o package.json mudou (ex.: supabase-js entrou)
 npm start       # abre o Metro + QR code
 ```
 
@@ -222,6 +227,15 @@ Instale o **Expo Go** no celular e escaneie o QR (Android: pelo app; iPhone: pel
 **mesma rede Wi-Fi**. Se a rede bloquear, use `npx expo start --tunnel`.
 
 Para conferir no navegador: `npx expo start --web` (lembrando da instabilidade de interação acima).
+
+### Ao trocar de máquina (ex.: continuar no notebook)
+
+1. `git pull` na `main`.
+2. `cd nofoco && npm install` (o `supabase-js` foi adicionado — sem isso o Metro quebra em `@supabase/*`).
+3. **Recriar `nofoco/.env.local`** — ele está **fora do Git** de propósito (segredo). Copie de `.env.example`
+   e cole a chave **anon/publishable** do Supabase (Project Settings → API). Sem isso a conta aparece como
+   "não configurada" (o app roda local mesmo assim). NUNCA commitar a `service_role`.
+4. Se o Metro tiver cache velho após `npm install`, suba com `npx expo start --web --clear`.
 
 ## Convenções
 
