@@ -82,6 +82,12 @@ function reconcileKcal(reported: number, carb: number, protein: number, fat: num
   return Math.min(reported || fromMacros || 0, 900);
 }
 
+/** Tem nutrição usável? (produto do OFF pode existir com a tabela toda vazia.) */
+function hasNutrition(food: Food): boolean {
+  const p = food.per100;
+  return p.kcal > 0 || p.carb > 0 || p.protein > 0 || p.fat > 0;
+}
+
 /** Detecta se o produto é líquido (usa ml em vez de g) pelos campos do OFF. */
 function isLiquid(product: any): boolean {
   const unit = String(product.serving_quantity_unit ?? product.product_quantity_unit ?? '').toLowerCase();
@@ -172,8 +178,11 @@ export async function lookupProduct(barcode: string): Promise<Food | null> {
     const { data } = await supabase.from('products').select('*').eq('barcode', code).maybeSingle();
     if (data) {
       const food = foodFromRow(data);
-      rememberFood(food);
-      return food;
+      if (hasNutrition(food)) {
+        rememberFood(food);
+        return food;
+      }
+      // linha antiga sem nutrição → tenta o OFF de novo (pode ter sido preenchido)
     }
   }
 
@@ -183,6 +192,8 @@ export async function lookupProduct(barcode: string): Promise<Food | null> {
     const json = await res.json();
     if (json?.status === 1 && json.product) {
       const food = foodFromOFF(code, json.product);
+      // produto existe mas sem nutrição usável → trata como "não encontrado"
+      if (!hasNutrition(food)) return null;
       rememberFood(food);
       // grava no cache para todos (só funciona logado — RLS restringe escrita a authenticated)
       if (supabase) {
