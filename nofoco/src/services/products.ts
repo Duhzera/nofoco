@@ -22,7 +22,9 @@ import { rememberFood, type Food, type Nutrients } from '@/data/foods';
 import { supabase } from '@/services/supabase';
 
 const OFF_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
-const OFF_FIELDS = 'code,product_name,product_name_pt,brands,image_url,nutriments';
+const OFF_FIELDS =
+  'code,product_name,product_name_pt,brands,image_url,nutriments,' +
+  'serving_size,serving_quantity,serving_quantity_unit,product_quantity,product_quantity_unit,quantity';
 
 /** número válido (com fator de conversão) ou undefined se ausente. */
 function opt(v: unknown, factor = 1): number | undefined {
@@ -67,18 +69,62 @@ function nutrientsFromOFF(n: OFFNutriments): Nutrients {
   };
 }
 
+/**
+ * kcal fisicamente impossível (>900/100 g — nem gordura pura passa disso) ou ausente
+ * costuma ser dado errado no OFF (colaborativo). Nesses casos recalcula pelos macros
+ * (4/4/9), que quase sempre está certo (ex.: manteiga com "7000" vira ~729 pela gordura).
+ */
+function reconcileKcal(reported: number, carb: number, protein: number, fat: number): number {
+  const fromMacros = Math.round(4 * (carb || 0) + 4 * (protein || 0) + 9 * (fat || 0));
+  const ok = (v: number) => v > 0 && v <= 900;
+  if (ok(reported)) return reported;
+  if (ok(fromMacros)) return fromMacros;
+  return Math.min(reported || fromMacros || 0, 900);
+}
+
+/** Detecta se o produto é líquido (usa ml em vez de g) pelos campos do OFF. */
+function isLiquid(product: any): boolean {
+  const unit = String(product.serving_quantity_unit ?? product.product_quantity_unit ?? '').toLowerCase();
+  if (unit === 'ml' || unit === 'cl' || unit === 'l') return true;
+  const text = `${product.serving_size ?? ''} ${product.quantity ?? ''}`.toLowerCase();
+  return /\d\s*(ml|cl|litro|liter)\b|\b\d+\s*l\b/.test(text);
+}
+
+/** Nome do produto, evitando lixo do OFF (vazio, só número, curto demais). */
+function pickName(product: any, code: string): string {
+  const good = (s: string) => s.trim().length >= 3 && !/^[\d.,\s]+$/.test(s);
+  const pt = String(product.product_name_pt ?? '').trim();
+  const en = String(product.product_name ?? '').trim();
+  if (good(pt)) return pt;
+  if (good(en)) return en;
+  return en || pt || `Produto ${code}`;
+}
+
 function foodFromOFF(code: string, product: any): Food {
   const brand = typeof product.brands === 'string' ? product.brands.split(',')[0]?.trim() : undefined;
+  const per100 = nutrientsFromOFF(product.nutriments ?? {});
+  per100.kcal = reconcileKcal(per100.kcal, per100.carb, per100.protein, per100.fat);
+
+  const liquid = isLiquid(product);
+  const unit = liquid ? 'ml' : 'g';
+
+  // usa a porção real do rótulo como "1 unidade" (ex.: 20 g, 200 ml); senão, 100 g/ml.
+  const sq = Number(product.serving_quantity);
+  const hasServing = Number.isFinite(sq) && sq > 0 && sq <= 1500;
+  const unitGrams = hasServing ? Math.round(sq) : 100;
+  const unitLabel = hasServing ? `porção (${unitGrams} ${unit})` : `100 ${unit}`;
+
   return {
     id: `off-${code}`,
-    name: product.product_name_pt || product.product_name || `Produto ${code}`,
+    name: pickName(product, code),
     brand: brand || undefined,
     source: 'Open Food Facts',
     emoji: '🛒',
     kind: 'marca',
-    per100: nutrientsFromOFF(product.nutriments ?? {}),
-    unitGrams: 100,
-    unitLabel: 'porção (100 g)',
+    liquid,
+    per100,
+    unitGrams,
+    unitLabel,
   };
 }
 
@@ -105,6 +151,8 @@ function rowFromFood(barcode: string, food: Food, imageUrl?: string) {
     name: food.name,
     brand: food.brand ?? null,
     per100: food.per100,
+    unit_grams: food.unitGrams,
+    unit_label: food.unitLabel,
     liquid: food.liquid ?? false,
     source: food.source,
     image_url: imageUrl ?? null,

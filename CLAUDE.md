@@ -169,9 +169,15 @@ batido. Foi oferecido acrescentar um **aviso quando o ritmo passar de ~1% do pes
    `3017620422003` → OFF ao vivo → 539 kcal/100 g com macros certos → tela de porção. Botão "Escanear" ligado
    em `adicionar.tsx` (rota `/escanear`); plugin `expo-camera` no `app.json` (permissão de câmera). **Falta
    testar o scan por câmera no celular** (Expo Go) — só dá no device. Atribuição OFF (ODbL) onde os dados
-   aparecerem. Cache Supabase (`products`) grava o que é escaneado (só logado — RLS). **Refino futuro:**
-   quando `lookupProduct` grava no cache, hoje só manda barcode/name/brand/per100/... — conferir se todos os
-   campos que a tela usa estão indo.
+   aparecerem. Cache Supabase (`products`) grava o que é escaneado (só logado — RLS) — agora também
+   `unit_grams`/`unit_label`. **Correções de dados do OFF (feitas):** (a) a "1 unidade" agora usa a **porção
+   real** (`serving_quantity`/`serving_size`, ex.: Leite Moça 20 g = 73 kcal, Açúcar 5 g = 20 kcal) — antes
+   fixava 100 g sempre; o pulo do gato foi **pedir os campos de porção no `OFF_FIELDS`** (a query não os
+   trazia); sem porção no OFF, cai em "100 g". (b) detecção de **líquido** (ml) por `serving_quantity_unit`/
+   texto. (c) **trava de sanidade no kcal** (`reconcileKcal`): valor impossível (>900/100 g, ex.: manteiga
+   "7000") é recalculado pelos macros 4/4/9 (~733). (d) nome evita lixo do OFF (vazio/numérico). Diferenças
+   pequenas (5,3 vs 6 g) são do próprio OFF (colaborativo) — normais. Tudo isso é JS, então vai por **OTA**
+   (`eas update`) depois do primeiro build com câmera.
 4. **Foto com IA** — ainda stub (é a última fase; precisa de endpoint no backend).
 5. **Sincronização (Supabase)** — **IMPLEMENTADA (v1)**. Schema em `supabase/schema.sql` (tabelas
    `profiles`, `meals`, `weight_log`, `diary_items` por `user_id` + RLS de dono) — **rode no SQL Editor
