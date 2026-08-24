@@ -8,18 +8,10 @@
       "android": {
         "buildType": "apk"
       },
-      "distribution": "internal",
-      "channel": "preview",
-      "runtimeVersion": {
-        "policy": "appVersion"
-      }
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "channel": "production",
-      "runtimeVersion": {
-        "policy": "appVersion"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
