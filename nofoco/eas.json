@@ -9,10 +9,17 @@
         "buildType": "apk"
       },
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     }
   },
   "submit": {

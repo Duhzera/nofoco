@@ -55,12 +55,6 @@
         "projectId": "be92ec27-bb39-496e-bdad-a5e090ad31a8"
       }
     },
-    "owner": "duhzeravs",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/be92ec27-bb39-496e-bdad-a5e090ad31a8"
-    }
+    "owner": "duhzeravs"
   }
 }
