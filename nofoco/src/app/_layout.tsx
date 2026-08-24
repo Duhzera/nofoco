@@ -51,6 +51,7 @@ export default function RootLayout() {
             options={{ presentation: 'modal', title: 'Adicionar alimento' }}
           />
           <Stack.Screen name="pesquisar" options={{ title: 'Pesquisar' }} />
+          <Stack.Screen name="foto" options={{ title: 'Foto (IA)' }} />
           <Stack.Screen name="escanear" options={{ title: 'Escanear', animation: 'fade' }} />
           <Stack.Screen name="porcao" options={{ title: 'Porção' }} />
           <Stack.Screen name="refeicao" options={{ title: 'Refeição' }} />

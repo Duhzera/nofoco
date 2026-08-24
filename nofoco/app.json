@@ -43,6 +43,12 @@
         {
           "cameraPermission": "O NoFoco usa a câmera para ler o código de barras dos produtos."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O NoFoco acessa suas fotos para você escolher a imagem do prato."
+        }
       ]
     ],
     "experiments": {

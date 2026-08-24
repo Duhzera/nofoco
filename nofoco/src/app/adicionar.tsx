@@ -16,7 +16,7 @@ type Mode = {
 const MODES: Mode[] = [
   { icon: 'search-outline', title: 'Pesquisar', desc: 'Busque por nome, ex.: pão de queijo', route: '/pesquisar' },
   { icon: 'barcode-outline', title: 'Escanear', desc: 'Leia o código de barras do produto', route: '/escanear' },
-  { icon: 'camera-outline', title: 'Foto (IA)', desc: 'Fotografe o prato e estime os macros', soon: true },
+  { icon: 'camera-outline', title: 'Foto (IA)', desc: 'Fotografe o prato e estime os macros', route: '/foto' },
 ];
 
 export default function AdicionarModal() {
@@ -26,7 +26,7 @@ export default function AdicionarModal() {
 
   const open = (route: string) =>
     router.push({
-      pathname: route as '/pesquisar' | '/escanear',
+      pathname: route as '/pesquisar' | '/escanear' | '/foto',
       params: { ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
     });
 
