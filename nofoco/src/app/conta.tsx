@@ -71,6 +71,14 @@ export default function ContaScreen() {
   const syncing = syncStatus === 'syncing';
   const valid = /\S+@\S+\.\S+/.test(email) && password.length >= 6;
 
+  const safeClose = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   const submit = async () => {
     if (!valid || busy) return;
     setBusy(true);
@@ -89,7 +97,7 @@ export default function ContaScreen() {
         return;
       }
     }
-    router.back();
+    safeClose();
   };
 
   const handleGoogleLogin = async () => {
@@ -104,7 +112,7 @@ export default function ContaScreen() {
       return;
     }
     if (useAuth.getState().user) {
-      router.back();
+      safeClose();
     }
   };
 
@@ -171,7 +179,7 @@ export default function ContaScreen() {
             {user ? 'Gerencie seus dados e sincronização na nuvem.' : 'Para salvar e sincronizar seus dados na nuvem.'}
           </Text>
         </View>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.close}>
+        <Pressable onPress={safeClose} hitSlop={10} style={styles.close}>
           <Ionicons name="close" size={22} color={NoFoco.ink} />
         </Pressable>
       </View>

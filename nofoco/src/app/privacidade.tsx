@@ -6,6 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
 
 export default function PrivacidadeScreen() {
+  const safeClose = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -13,7 +21,7 @@ export default function PrivacidadeScreen() {
           <Text style={styles.title}>Privacidade & Termos</Text>
           <Text style={styles.sub}>Conformidade com a LGPD (Lei 13.709/2018)</Text>
         </View>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.close}>
+        <Pressable onPress={safeClose} hitSlop={10} style={styles.close}>
           <Ionicons name="close" size={22} color={NoFoco.ink} />
         </Pressable>
       </View>
