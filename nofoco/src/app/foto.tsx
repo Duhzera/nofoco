@@ -123,7 +123,7 @@ export default function FotoScreen() {
         </Pressable>
       </View>
 
-      {!user ? (
+      {!user && !process.env.EXPO_PUBLIC_GEMINI_API_KEY ? (
         <View style={styles.card}>
           <Text style={styles.warn}>
             A análise por foto roda no servidor e precisa de conta. Entre na sua conta para usar.
