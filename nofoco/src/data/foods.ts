@@ -195,24 +195,14 @@ const SEARCH_LIMIT = 60;
 export function normalize(s: string): string {
   return s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }
 
-export function searchFoods(query: string): Food[] {
-  const q = normalize(query);
-  const base = q
-    ? FOODS.filter((f) => normalize(f.name).includes(q) || (f.brand && normalize(f.brand).includes(q)))
-    : FOODS;
-  return base.slice(0, SEARCH_LIMIT);
-}
-
 /**
- * Produtos vindos do leitor de código de barras (Open Food Facts / cache Supabase)
- * não estão na lista estática. O serviço de barcode os "lembra" aqui em runtime para
- * que `getFood` (usado pela tela de porção) consiga resolvê-los pelo id. Ver
- * services/products.ts.
+ * Produtos vindos do leitor de código de barras, receitas e cache
+ * são lembrados aqui em runtime para ficarem acessíveis a qualquer busca.
  */
 const remembered = new Map<string, Food>();
 
@@ -220,8 +210,18 @@ export function rememberFood(food: Food): void {
   remembered.set(food.id, food);
 }
 
+export function searchFoods(query: string): Food[] {
+  const q = normalize(query);
+  const userItems = Array.from(remembered.values());
+  const combined = [...userItems, ...FOODS];
+  const base = q
+    ? combined.filter((f) => normalize(f.name).includes(q) || (f.brand && normalize(f.brand).includes(q)))
+    : combined;
+  return base.slice(0, SEARCH_LIMIT);
+}
+
 export function getFood(id: string): Food | undefined {
-  return FOODS.find((f) => f.id === id) ?? remembered.get(id);
+  return remembered.get(id) ?? FOODS.find((f) => f.id === id);
 }
 
 /** Escala um campo opcional mantendo `undefined` quando o dado não existe. */

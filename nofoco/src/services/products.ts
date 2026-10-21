@@ -18,7 +18,7 @@
  * `undefined` — nossa regra "não sabemos ≠ zero".
  * Atribuição: Open Food Facts (ODbL) — exibir crédito onde os dados aparecerem.
  */
-import { rememberFood, type Food, type Nutrients } from '@/data/foods';
+import { rememberFood, type Food, type Nutrients, type Serving } from '@/data/foods';
 import { supabase } from '@/services/supabase';
 
 const OFF_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
@@ -106,6 +106,41 @@ function pickName(product: any, code: string): string {
   return en || pt || `Produto ${code}`;
 }
 
+/** Extrai a quantidade total da embalagem (ex.: 473 ml, 350 ml, 90 g) de product_quantity, quantity ou nome. */
+function parsePackageQuantity(product: any): number | null {
+  const pq = Number(product.product_quantity);
+  if (Number.isFinite(pq) && pq > 0 && pq <= 10000) return Math.round(pq);
+
+  const q = String(product.quantity ?? '').trim();
+  const m = q.match(/(\d+(?:[.,]\d+)?)\s*(ml|g|cl|l|kg)\b/i);
+  if (m) {
+    let val = parseFloat(m[1].replace(',', '.'));
+    const u = m[2].toLowerCase();
+    if (u === 'l' || u === 'kg') val *= 1000;
+    else if (u === 'cl') val *= 10;
+    if (Number.isFinite(val) && val > 0 && val <= 10000) return Math.round(val);
+  }
+
+  // Tenta extrair do título ou marca (ex: "Monster Energy 473ml", "Refrigerante 350ml")
+  const fullText = `${product.product_name ?? ''} ${product.product_name_pt ?? ''} ${product.brands ?? ''}`.toLowerCase();
+  const titleMatch = fullText.match(/\b(250|269|310|330|350|355|473|500|600|1000|1500|2000)\s*(ml|g|l)\b/i);
+  if (titleMatch) {
+    let val = parseFloat(titleMatch[1]);
+    if (titleMatch[2].toLowerCase() === 'l') val *= 1000;
+    return Math.round(val);
+  }
+
+  // Padrões conhecidos no Brasil onde o OFF costuma deixar a quantidade em branco
+  if (fullText.includes('monster')) {
+    return 473;
+  }
+  if (fullText.includes('red bull') || fullText.includes('redbull')) {
+    return 250;
+  }
+
+  return null;
+}
+
 function foodFromOFF(code: string, product: any): Food {
   const brand = typeof product.brands === 'string' ? product.brands.split(',')[0]?.trim() : undefined;
   const per100 = nutrientsFromOFF(product.nutriments ?? {});
@@ -114,11 +149,64 @@ function foodFromOFF(code: string, product: any): Food {
   const liquid = isLiquid(product);
   const unit = liquid ? 'ml' : 'g';
 
-  // usa a porção real do rótulo como "1 unidade" (ex.: 20 g, 200 ml); senão, 100 g/ml.
   const sq = Number(product.serving_quantity);
-  const hasServing = Number.isFinite(sq) && sq > 0 && sq <= 1500;
-  const unitGrams = hasServing ? Math.round(sq) : 100;
-  const unitLabel = hasServing ? `porção (${unitGrams} ${unit})` : `100 ${unit}`;
+  const hasServing = Number.isFinite(sq) && sq > 0 && sq <= 2000;
+  const servingGrams = hasServing ? Math.round(sq) : null;
+  const pkgGrams = parsePackageQuantity(product);
+
+  const extraServings: Serving[] = [];
+  let unitGrams = 100;
+  let unitLabel = `100 ${unit}`;
+
+  // Se for produto de dose individual/consumo direto (lata/garrafa <= 600ml ou pacote/barra <= 150g),
+  // o consumidor espera que "1 unidade" seja a lata/embalagem inteira (ex.: Monster 473 ml).
+  const isSingleServe = pkgGrams && (liquid ? pkgGrams <= 600 : pkgGrams <= 150);
+
+  if (isSingleServe && pkgGrams) {
+    unitGrams = pkgGrams;
+    const containerName = liquid ? (pkgGrams >= 250 && pkgGrams <= 500 ? 'lata' : 'garrafa') : 'unidade';
+    unitLabel = `${containerName} (${pkgGrams} ${unit})`;
+
+    extraServings.push({
+      id: 'embalagem',
+      label: `1 ${containerName} (${pkgGrams} ${unit})`,
+      grams: pkgGrams,
+    });
+
+    if (servingGrams && servingGrams !== pkgGrams) {
+      extraServings.push({
+        id: 'porcao-anvisa',
+        label: `copo / porção (${servingGrams} ${unit})`,
+        grams: servingGrams,
+      });
+    }
+  } else if (servingGrams) {
+    // Embalagem maior (ex.: garrafa de 2 litros, pote de manteiga 500g): a porção da tabela é a padrão
+    unitGrams = servingGrams;
+    unitLabel = `porção (${servingGrams} ${unit})`;
+
+    extraServings.push({
+      id: 'porcao',
+      label: `porção (${servingGrams} ${unit})`,
+      grams: servingGrams,
+    });
+
+    if (pkgGrams && pkgGrams !== servingGrams) {
+      extraServings.push({
+        id: 'embalagem-total',
+        label: `embalagem inteira (${pkgGrams} ${unit})`,
+        grams: pkgGrams,
+      });
+    }
+  } else if (pkgGrams) {
+    unitGrams = pkgGrams;
+    unitLabel = `embalagem (${pkgGrams} ${unit})`;
+    extraServings.push({
+      id: 'embalagem',
+      label: `embalagem (${pkgGrams} ${unit})`,
+      grams: pkgGrams,
+    });
+  }
 
   return {
     id: `off-${code}`,
@@ -131,6 +219,7 @@ function foodFromOFF(code: string, product: any): Food {
     per100,
     unitGrams,
     unitLabel,
+    extraServings: extraServings.length > 0 ? extraServings : undefined,
   };
 }
 
@@ -173,7 +262,25 @@ export async function lookupProduct(barcode: string): Promise<Food | null> {
   const code = barcode.replace(/\D/g, '').trim();
   if (!code) return null;
 
-  // 1) cache próprio (Supabase) — leitura é pública; se a tabela não existir, ignora
+  // 1) Open Food Facts ao vivo (prioriza para trazer as porções e correções mais recentes)
+  try {
+    const res = await fetch(`${OFF_ENDPOINT}/${code}.json?fields=${OFF_FIELDS}`);
+    const json = await res.json();
+    if (json?.status === 1 && json.product) {
+      const food = foodFromOFF(code, json.product);
+      if (hasNutrition(food)) {
+        rememberFood(food);
+        if (supabase) {
+          void supabase.from('products').upsert(rowFromFood(code, food, json.product.image_url));
+        }
+        return food;
+      }
+    }
+  } catch {
+    // rede fora / erro -> fallback no cache
+  }
+
+  // 2) cache próprio (Supabase)
   if (supabase) {
     const { data } = await supabase.from('products').select('*').eq('barcode', code).maybeSingle();
     if (data) {
@@ -182,27 +289,7 @@ export async function lookupProduct(barcode: string): Promise<Food | null> {
         rememberFood(food);
         return food;
       }
-      // linha antiga sem nutrição → tenta o OFF de novo (pode ter sido preenchido)
     }
-  }
-
-  // 2) Open Food Facts ao vivo
-  try {
-    const res = await fetch(`${OFF_ENDPOINT}/${code}.json?fields=${OFF_FIELDS}`);
-    const json = await res.json();
-    if (json?.status === 1 && json.product) {
-      const food = foodFromOFF(code, json.product);
-      // produto existe mas sem nutrição usável → trata como "não encontrado"
-      if (!hasNutrition(food)) return null;
-      rememberFood(food);
-      // grava no cache para todos (só funciona logado — RLS restringe escrita a authenticated)
-      if (supabase) {
-        void supabase.from('products').upsert(rowFromFood(code, food, json.product.image_url));
-      }
-      return food;
-    }
-  } catch {
-    // rede fora / resposta inválida → cai no fallback do chamador
   }
 
   return null;

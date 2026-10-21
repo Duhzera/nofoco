@@ -59,6 +59,10 @@ export default function RootLayout() {
             name="refeicao-editar"
             options={{ presentation: 'modal', title: 'Refeição' }}
           />
+          <Stack.Screen
+            name="receita-criar"
+            options={{ presentation: 'modal', title: 'Criar Receita' }}
+          />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
