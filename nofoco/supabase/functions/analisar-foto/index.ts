@@ -1,12 +1,12 @@
 /**
  * Edge Function: estima os alimentos de uma foto de prato usando Google Gemini Vision (ou Anthropic Claude).
  *
- * Roda no servidor (Supabase) para que a chave de API da IA NUNCA fique no app mobile.
+ * Roda no servidor (Supabase) para que a chave de API da IA NUNCA fique exposta no app mobile.
  *
  * Como configurar no Supabase:
  * 1. Obtenha sua chave gratuita do Gemini em: https://aistudio.google.com/
  * 2. Configure o segredo no Supabase:
- *    npx supabase secrets set GEMINI_API_KEY=AIzaSy...
+ *    npx supabase secrets set GEMINI_API_KEY=AQ...
  * 3. Faça o deploy da função:
  *    npx supabase functions deploy analisar-foto
  */
@@ -18,7 +18,7 @@ Regras:
 1. Identifique cada alimento visível separadamente (arroz branco, feijão carioca, filé de frango grelhado, salada de alface e tomate...).
 2. Estime o peso da porção em gramas com base em referências visuais (tamanho relativo ao prato, talheres, copo, mão).
 3. Os valores nutricionais em "per100" são SEMPRE por 100 g do alimento (base TACO/IBGE), e NÃO da porção inteira.
-4. "confidence" deve ser "alta" para alimentos óbvios (arroz, ovo, frango), "media" para preparações mistas, e "baixa" se estiver encoberto ou difícil de distinguir.
+4. "confidence" deve ser "alta", "media" ou "baixa".
 5. Se a foto NÃO for de comida ou refeição, retorne a lista "items" vazia e preencha "aviso" com uma mensagem amigável explicando o motivo.`;
 
 const CORS = {
@@ -53,84 +53,98 @@ Deno.serve(async (req) => {
     const cleanBase64 = image.replace(/^data:image\/[a-z]+;base64,/, '');
 
     // ─────────────────────────────────────────────────────────────
-    // 1. Prioridade: Google Gemini (Gemini 1.5 Flash / 2.0 Flash)
+    // 1. Google Gemini (Gemini 3.5 Flash-Lite / Gemini 3.8 Flash)
     // ─────────────────────────────────────────────────────────────
     if (geminiKey) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+      let lastError = '';
 
-      const geminiBody = {
-        system_instruction: {
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        contents: [
-          {
-            parts: [
-              {
-                inline_data: {
-                  mime_type: mediaType,
-                  data: cleanBase64,
-                },
-              },
-              {
-                text: 'Que alimentos estão neste prato? Estime peso da porção em gramas e composição por 100g.',
-              },
-            ],
+      for (const model of models) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+
+        const geminiBody = {
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }],
           },
-        ],
-        generationConfig: {
-          response_mime_type: 'application/json',
-          response_schema: {
-            type: 'OBJECT',
-            required: ['items'],
-            properties: {
-              items: {
-                type: 'ARRAY',
+          contents: [
+            {
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: mediaType,
+                    data: cleanBase64,
+                  },
+                },
+                {
+                  text: 'Identifique os alimentos deste prato, estimando a porção em gramas e os nutrientes por 100g.',
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            response_mime_type: 'application/json',
+            response_schema: {
+              type: 'OBJECT',
+              required: ['items'],
+              properties: {
                 items: {
-                  type: 'OBJECT',
-                  required: ['name', 'grams', 'confidence', 'per100'],
-                  properties: {
-                    name: { type: 'STRING', description: 'Nome do alimento em português' },
-                    grams: { type: 'NUMBER', description: 'Peso estimado da porção em gramas' },
-                    confidence: { type: 'STRING', enum: ['alta', 'media', 'baixa'] },
-                    per100: {
-                      type: 'OBJECT',
-                      required: ['kcal', 'carb', 'protein', 'fat'],
-                      properties: {
-                        kcal: { type: 'NUMBER' },
-                        carb: { type: 'NUMBER' },
-                        protein: { type: 'NUMBER' },
-                        fat: { type: 'NUMBER' },
-                        fiber: { type: 'NUMBER' },
-                        sodium: { type: 'NUMBER', description: 'Sódio em mg por 100g' },
+                  type: 'ARRAY',
+                  items: {
+                    type: 'OBJECT',
+                    required: ['name', 'grams', 'confidence', 'per100'],
+                    properties: {
+                      name: { type: 'STRING', description: 'Nome do alimento em português' },
+                      grams: { type: 'NUMBER', description: 'Peso estimado da porção em gramas' },
+                      confidence: { type: 'STRING', enum: ['alta', 'media', 'baixa'] },
+                      per100: {
+                        type: 'OBJECT',
+                        required: ['kcal', 'carb', 'protein', 'fat'],
+                        properties: {
+                          kcal: { type: 'NUMBER' },
+                          carb: { type: 'NUMBER' },
+                          protein: { type: 'NUMBER' },
+                          fat: { type: 'NUMBER' },
+                          fiber: { type: 'NUMBER' },
+                          sodium: { type: 'NUMBER', description: 'Sódio em mg por 100g' },
+                        },
                       },
                     },
                   },
                 },
+                aviso: { type: 'STRING', description: 'Mensagem explicativa se a foto não for comida' },
               },
-              aviso: { type: 'STRING', description: 'Mensagem explicativa se a foto não for comida' },
             },
           },
-        },
-      };
+        };
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody),
-      });
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody),
+        });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error('Erro na API do Gemini:', errText);
-        return json({ error: `Erro na API do Gemini: ${res.statusText}` }, 502);
+        if (res.ok) {
+          const data = await res.json();
+          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawText) {
+            const parsed = JSON.parse(rawText);
+            // Garante normalização de confidence se vier número
+            if (Array.isArray(parsed.items)) {
+              for (const it of parsed.items) {
+                if (typeof it.confidence === 'number') {
+                  it.confidence = it.confidence >= 0.8 ? 'alta' : it.confidence >= 0.5 ? 'media' : 'baixa';
+                }
+              }
+            }
+            return json(parsed);
+          }
+        } else {
+          lastError = await res.text();
+          console.warn(`Tentativa com ${model} falhou:`, lastError);
+        }
       }
 
-      const data = await res.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) return json({ error: 'Resposta vazia da IA.' }, 502);
-
-      const parsed = JSON.parse(rawText);
-      return json(parsed);
+      return json({ error: `Falha na API do Gemini: ${lastError}` }, 502);
     }
 
     // ─────────────────────────────────────────────────────────────
