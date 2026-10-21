@@ -3,9 +3,9 @@
  *
  * Modelo v1 "espelho": o aparelho é a cópia de trabalho; o remoto é um backup.
  *  - pushAll: envia o estado local inteiro (upsert + apaga o que sumiu localmente).
- *  - pullAll: baixa tudo e substitui os stores locais.
+ *  - pullAll: baixa tudo e substitui os stores locais de forma segura.
  * Conflito = último a escrever vence. Não é merge por campo — dois aparelhos
- * editando offline ao mesmo tempo fazem um sobrescrever o outro (aceitável por ora).
+ * editando offline ao mesmo tempo fazem um sobrescrever o outro.
  *
  * Tudo aqui é no-op se o backend não estiver configurado (supabase === null).
  * As tabelas ficam em supabase/schema.sql — rode antes de usar.
@@ -33,9 +33,19 @@ async function deleteMissing(table: string, keyCol: string, uid: string, keep: s
 /** Existe algum dado remoto para este usuário? (decide pull vs push no login) */
 export async function remoteHasData(uid: string): Promise<boolean> {
   if (!supabase) return false;
-  const { data, error } = await supabase.from('profiles').select('user_id').eq('user_id', uid).maybeSingle();
-  if (error) throw error;
-  return Boolean(data);
+  try {
+    const [prof, diary, weight] = await Promise.all([
+      supabase.from('profiles').select('user_id').eq('user_id', uid).maybeSingle(),
+      supabase.from('diary_items').select('item_id').eq('user_id', uid).limit(1),
+      supabase.from('weight_log').select('date').eq('user_id', uid).limit(1),
+    ]);
+    const hasDiary = Boolean(diary.data && diary.data.length > 0);
+    const hasWeight = Boolean(weight.data && weight.data.length > 0);
+    const hasProfile = Boolean(prof.data);
+    return hasDiary || hasWeight || hasProfile;
+  } catch {
+    return false;
+  }
 }
 
 /** Envia o estado local inteiro para o remoto (espelho). */
@@ -153,7 +163,7 @@ export async function pushAll(uid: string): Promise<void> {
   await deleteMissing('diary_items', 'item_id', uid, dRows.map((r) => r.item_id));
 }
 
-/** Baixa tudo do remoto e substitui os stores locais. */
+/** Baixa tudo do remoto e substitui os stores locais de forma segura (sem apagar dados locais quando o remoto for vazio). */
 export async function pullAll(uid: string): Promise<void> {
   if (!supabase) return;
 
@@ -182,7 +192,7 @@ export async function pullAll(uid: string): Promise<void> {
     });
   }
 
-  if (meals.data?.length) {
+  if (meals.data && meals.data.length > 0) {
     const parsed: Meal[] = meals.data.map((m) => ({
       id: m.meal_id,
       name: m.name,
@@ -194,13 +204,19 @@ export async function pullAll(uid: string): Promise<void> {
     useMeals.setState({ meals: parsed });
   }
 
-  if (weight.data?.length) {
+  if (weight.data && weight.data.length > 0) {
     const log: Record<string, number> = {};
     for (const r of weight.data) log[r.date] = Number(r.kg);
     useWeight.setState({ log });
+  } else {
+    // Se o remoto não tem pesos mas o celular tem, envia para a nuvem
+    const localLog = useWeight.getState().log;
+    if (Object.keys(localLog).length > 0) {
+      void pushAll(uid);
+    }
   }
 
-  if (diary.data) {
+  if (diary.data && diary.data.length > 0) {
     const days: DiaryDays = {};
     for (const r of diary.data) {
       const it: DiaryItem = {
@@ -217,5 +233,12 @@ export async function pullAll(uid: string): Promise<void> {
       days[r.day][r.meal_id].push(it);
     }
     useDiary.setState({ days });
+  } else {
+    // PROTEÇÃO CRÍTICA: Se a nuvem não tiver nenhum item no diário, NUNCA zera o que o usuário já tinha no aparelho!
+    // Pelo contrário: se o usuário já tem itens locais, sobe o backup para a nuvem.
+    const localDays = useDiary.getState().days;
+    if (Object.keys(localDays).length > 0) {
+      void pushAll(uid);
+    }
   }
 }

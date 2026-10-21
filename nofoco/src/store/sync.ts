@@ -87,6 +87,14 @@ export const useSync = create<SyncState>()(
         if (!supabase || !uid) return;
         set({ status: 'syncing', error: null });
         try {
+          const has = await remoteHasData(uid);
+          if (!has) {
+            set({
+              status: 'idle',
+              error: 'Nenhum backup encontrado na nuvem para esta conta. Seus dados locais foram mantidos.',
+            });
+            return;
+          }
           applying = true;
           await pullAll(uid);
           set({ status: 'done', error: null, lastSyncAt: Date.now() });
