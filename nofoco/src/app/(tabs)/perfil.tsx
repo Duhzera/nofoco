@@ -25,6 +25,7 @@ import { mealTarget } from '@/lib/pacing';
 import { pctSum, useMeals } from '@/store/meals';
 import { useAuth } from '@/store/auth';
 import { useProfile } from '@/store/profile';
+import { useSubscription } from '@/store/subscription';
 import { formatKg, latestWeight, parseKg, useWeight } from '@/store/weight';
 
 /** Formata kg no padrão brasileiro (0,42 kg). */
@@ -56,6 +57,7 @@ export default function PerfilScreen() {
   const log = useWeight((s) => s.log);
   const setWeight = useWeight((s) => s.setWeight);
   const authUser = useAuth((s) => s.user);
+  const isPro = useSubscription((s) => s.isPro);
 
   // peso atual = última medição do histórico; sem histórico, o valor herdado do perfil
   const currentKg = latestWeight(log) ?? profile.weightKg;
@@ -87,6 +89,10 @@ export default function PerfilScreen() {
   const isCustom = Boolean(custom?.enabled);
 
   const toggleCustomMacros = (enable: boolean) => {
+    if (enable && !isPro) {
+      router.push('/premium');
+      return;
+    }
     if (enable) {
       setProfile({
         customMacros: {
@@ -143,6 +149,25 @@ export default function PerfilScreen() {
           <MacroPill value={`${goal.fiber}g`} label="Fibras" color={NoFoco.micro} />
         </View>
       </View>
+
+      {/* Banner NoFoco PRO */}
+      <Pressable style={styles.proBanner} onPress={() => router.push('/premium')}>
+        <View style={styles.proBannerLeft}>
+          <View style={[styles.proBadge, isPro && styles.proBadgeActive]}>
+            <Ionicons name="sparkles" size={12} color="#000" />
+            <Text style={styles.proBadgeText}>PRO</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.proBannerTitle}>
+              {isPro ? 'Você é NoFoco PRO' : 'Desbloqueie o NoFoco PRO'}
+            </Text>
+            <Text style={styles.proBannerSub}>
+              {isPro ? 'Plano ativo com fotos de IA ilimitadas' : 'Fotos com IA ilimitadas e 7 dias grátis'}
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={isPro ? NoFoco.soft : NoFoco.accent} />
+      </Pressable>
 
       {/* conta (opcional) */}
       <Pressable style={styles.account} onPress={() => router.push('/conta')}>
@@ -769,6 +794,51 @@ const styles = StyleSheet.create({
 
   disclaimer: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg, backgroundColor: NoFoco.surface, borderRadius: Radius.md, padding: Spacing.md },
   disclaimerText: { flex: 1, color: NoFoco.soft, fontSize: 11, lineHeight: 16 },
+  proBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: NoFoco.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(166,224,82,0.3)',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  proBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: NoFoco.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  proBadgeActive: {
+    backgroundColor: '#7ecb2a',
+  },
+  proBadgeText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  proBannerTitle: {
+    color: NoFoco.ink,
+    fontSize: 13.5,
+    fontWeight: '800',
+  },
+  proBannerSub: {
+    color: NoFoco.soft,
+    fontSize: 11.5,
+    marginTop: 1,
+  },
   privacyBtn: {
     flexDirection: 'row',
     alignItems: 'center',

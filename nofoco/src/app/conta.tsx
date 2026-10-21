@@ -31,6 +31,7 @@ import { useFavorites } from '@/store/favorites';
 import { useMeals } from '@/store/meals';
 import { useProfile } from '@/store/profile';
 import { useRecipes } from '@/store/recipes';
+import { useSubscription } from '@/store/subscription';
 import { useSync } from '@/store/sync';
 import { useWeight } from '@/store/weight';
 
@@ -51,6 +52,8 @@ function agoLabel(ts: number | null): string {
 /** Tela de conta: login com Google, e-mail/senha, privacidade e direitos LGPD. */
 export default function ContaScreen() {
   const user = useAuth((s) => s.user);
+  const isPro = useSubscription((s) => s.isPro);
+  const plan = useSubscription((s) => s.plan);
   const [mode, setMode] = useState<Mode>('entrar');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -198,6 +201,24 @@ export default function ContaScreen() {
               </View>
               <Text style={styles.loggedEmail}>{user.email}</Text>
             </View>
+
+            {/* Status da Assinatura / Upgrade */}
+            <Pressable
+              style={[styles.card, { marginTop: Spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={() => router.push('/premium')}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 }}>
+                <View style={[styles.planBadge, isPro && styles.planBadgePro]}>
+                  <Ionicons name="sparkles" size={14} color={isPro ? '#000' : NoFoco.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.planTitle}>{isPro ? `NoFoco PRO (${plan === 'annual' ? 'Anual' : 'Mensal'})` : 'Plano Gratuito'}</Text>
+                  <Text style={styles.planSub}>
+                    {isPro ? 'Assinatura ativa • Fotos ilimitadas' : '2 fotos com IA/dia • Toque para upgrade'}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={isPro ? NoFoco.soft : NoFoco.accent} />
+            </Pressable>
 
             <Pressable style={styles.backToAppBtn} onPress={safeClose}>
               <Ionicons name="arrow-back-outline" size={18} color={NoFoco.onAccent} />
@@ -463,6 +484,28 @@ const styles = StyleSheet.create({
   loggedLabel: { color: NoFoco.soft, fontSize: 12 },
   loggedEmail: { color: NoFoco.ink, fontSize: 16, fontWeight: '700', marginTop: 4 },
   warn: { color: NoFoco.warning, fontSize: 12.5, lineHeight: 18 },
+
+  planBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.md,
+    backgroundColor: NoFoco.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planBadgePro: {
+    backgroundColor: NoFoco.accent,
+  },
+  planTitle: {
+    color: NoFoco.ink,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  planSub: {
+    color: NoFoco.soft,
+    fontSize: 11.5,
+    marginTop: 2,
+  },
 
   backToAppBtn: {
     flexDirection: 'row',

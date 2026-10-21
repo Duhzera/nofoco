@@ -67,6 +67,10 @@ export default function RootLayout() {
             name="privacidade"
             options={{ presentation: 'modal', title: 'Privacidade' }}
           />
+          <Stack.Screen
+            name="premium"
+            options={{ presentation: 'modal', title: 'NoFoco PRO' }}
+          />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

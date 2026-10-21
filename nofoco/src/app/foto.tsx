@@ -20,6 +20,7 @@ import { useAuth } from '@/store/auth';
 import { useDay } from '@/store/day';
 import { newItemId, useDiary } from '@/store/diary';
 import { findMeal, useMeals, type MealId } from '@/store/meals';
+import { FREE_DAILY_PHOTOS, useSubscription } from '@/store/subscription';
 
 type Phase = 'inicio' | 'analisando' | 'revisao' | 'erro';
 
@@ -35,6 +36,11 @@ export default function FotoScreen() {
   const addItem = useDiary((s) => s.addItem);
   const date = useDay((s) => s.date);
   const user = useAuth((s) => s.user);
+
+  const isPro = useSubscription((s) => s.isPro);
+  const remaining = useSubscription((s) => s.remainingPhotosToday());
+  const canAnalyze = useSubscription((s) => s.canAnalyzePhoto());
+  const consumePhotoScan = useSubscription((s) => s.consumePhotoScan);
 
   const [phase, setPhase] = useState<Phase>('inicio');
   const [photo, setPhoto] = useState<string | null>(null);
@@ -52,6 +58,7 @@ export default function FotoScreen() {
     setAviso(null);
     const res = await analisarFoto(base64);
     if (res.kind === 'ok') {
+      consumePhotoScan();
       setItems(res.items);
       setChosen(new Set(res.items.map((_, i) => i))); // todos marcados por padrão
       setAviso(res.aviso ?? null);
@@ -66,6 +73,11 @@ export default function FotoScreen() {
   };
 
   const pick = async (from: 'camera' | 'galeria') => {
+    if (!canAnalyze) {
+      router.push('/premium');
+      return;
+    }
+
     const opts: ImagePicker.ImagePickerOptions = {
       base64: true,
       quality: 0.6,
@@ -134,6 +146,24 @@ export default function FotoScreen() {
         </View>
       ) : phase === 'inicio' ? (
         <View style={styles.body}>
+          {/* Quota Badge */}
+          {isPro ? (
+            <View style={styles.quotaPillPro}>
+              <Ionicons name="sparkles" size={13} color="#000" />
+              <Text style={styles.quotaTextPro}>NoFoco PRO • Fotos Ilimitadas</Text>
+            </View>
+          ) : (
+            <Pressable style={styles.quotaPillFree} onPress={() => router.push('/premium')}>
+              <Ionicons name="sparkles-outline" size={13} color={NoFoco.accent} />
+              <Text style={styles.quotaTextFree}>
+                {remaining > 0
+                  ? `${remaining} de ${FREE_DAILY_PHOTOS} fotos grátis hoje`
+                  : 'Limite diário de fotos atingido'}
+              </Text>
+              <Text style={styles.quotaUpgrade}>Seja PRO ➔</Text>
+            </Pressable>
+          )}
+
           <View style={styles.bigIcon}>
             <Ionicons name="camera-outline" size={34} color={NoFoco.accent} />
           </View>
@@ -141,14 +171,24 @@ export default function FotoScreen() {
           <Text style={styles.hint}>
             Enquadre o prato inteiro, de cima. Um talher ou a mão ao lado ajuda a estimar o tamanho.
           </Text>
-          <Pressable style={styles.cta} onPress={() => pick('camera')}>
-            <Ionicons name="camera" size={18} color={NoFoco.onAccent} />
-            <Text style={styles.ctaText}>Tirar foto</Text>
-          </Pressable>
-          <Pressable style={styles.linkBtn} onPress={() => pick('galeria')}>
-            <Ionicons name="images-outline" size={16} color={NoFoco.accent} />
-            <Text style={styles.linkText}>Escolher da galeria</Text>
-          </Pressable>
+
+          {canAnalyze ? (
+            <>
+              <Pressable style={styles.cta} onPress={() => pick('camera')}>
+                <Ionicons name="camera" size={18} color={NoFoco.onAccent} />
+                <Text style={styles.ctaText}>Tirar foto</Text>
+              </Pressable>
+              <Pressable style={styles.linkBtn} onPress={() => pick('galeria')}>
+                <Ionicons name="images-outline" size={16} color={NoFoco.accent} />
+                <Text style={styles.linkText}>Escolher da galeria</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable style={styles.cta} onPress={() => router.push('/premium')}>
+              <Ionicons name="sparkles" size={18} color={NoFoco.onAccent} />
+              <Text style={styles.ctaText}>Liberar fotos ilimitadas com PRO</Text>
+            </Pressable>
+          )}
         </View>
       ) : phase === 'analisando' ? (
         <View style={styles.body}>
@@ -182,19 +222,20 @@ export default function FotoScreen() {
               const m = macrosForGrams(it.food, it.grams);
               const conf = CONF[it.confidence];
               return (
-                <Pressable key={it.food.id} onPress={() => toggle(i)} style={[styles.item, on && styles.itemOn]}>
+                <Pressable key={it.food.id} style={[styles.item, on && styles.itemOn]} onPress={() => toggle(i)}>
                   <Ionicons
                     name={on ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={24}
+                    size={22}
                     color={on ? NoFoco.accent : NoFoco.soft}
                   />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.itemName}>{it.food.name}</Text>
                     <Text style={styles.itemMeta}>
-                      ~{it.grams} g · confiança <Text style={{ color: conf.color }}>{conf.label}</Text>
+                      {it.grams} g · {m.carb}g C · {m.protein}g P · {m.fat}g G ·{' '}
+                      <Text style={{ color: conf.color }}>{conf.label}</Text>
                     </Text>
                   </View>
-                  <Text style={styles.itemKcal}>{m.kcal}</Text>
+                  <Text style={styles.itemKcal}>{m.kcal} kcal</Text>
                 </Pressable>
               );
             })}
@@ -234,7 +275,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  body: { flex: 1, alignItems: 'center', paddingTop: 40, gap: Spacing.md },
+  body: { flex: 1, alignItems: 'center', paddingTop: 20, gap: Spacing.md },
+
+  quotaPillPro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: NoFoco.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
+    marginBottom: Spacing.sm,
+  },
+  quotaTextPro: {
+    color: '#000',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  quotaPillFree: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: NoFoco.surface,
+    borderWidth: 1,
+    borderColor: NoFoco.hair,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
+    marginBottom: Spacing.sm,
+  },
+  quotaTextFree: {
+    color: NoFoco.ink,
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  quotaUpgrade: {
+    color: NoFoco.accent,
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+
   bigIcon: {
     width: 78,
     height: 78,
