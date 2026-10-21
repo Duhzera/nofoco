@@ -38,3 +38,7 @@ Thumbs.db
 
 # configuração local do Claude Code (pessoal por máquina)
 .claude/settings.local.json
+
+# Supabase CLI temp files
+supabase/.temp/
+.temp/

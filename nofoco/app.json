@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "nofoco",
+    "name": "NoFoco",
     "slug": "nofoco",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,6 +16,10 @@
     },
     "android": {
       "package": "br.com.nfoco.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -41,13 +45,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "O NoFoco usa a câmera para ler o código de barras dos produtos."
+          "cameraPermission": "O NoFoco usa a câmera para fotografar seus pratos e ler códigos de barras de alimentos para cálculo de calorias e macros."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "O NoFoco acessa suas fotos para você escolher a imagem do prato."
+          "photosPermission": "O NoFoco acessa sua galeria para você escolher fotos de alimentos e calcular calorias por inteligência artificial."
         }
       ],
       "expo-image"

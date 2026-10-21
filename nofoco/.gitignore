@@ -44,3 +44,7 @@ example
 
 # EAS build archive (cópia temporária do projeto criada no build)
 /build-archive
+
+# Supabase CLI temp files
+supabase/.temp/
+.temp/
