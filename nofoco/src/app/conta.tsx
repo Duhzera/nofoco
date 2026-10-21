@@ -212,7 +212,11 @@ export default function ContaScreen() {
                   color={syncStatus === 'error' ? NoFoco.danger : NoFoco.accent}
                 />
                 <Text style={styles.syncStatus}>
-                  {syncing ? 'Sincronizando…' : agoLabel(lastSyncAt)}
+                  {syncing
+                    ? 'Sincronizando…'
+                    : syncStatus === 'error'
+                      ? 'Falha ao sincronizar'
+                      : agoLabel(lastSyncAt)}
                 </Text>
               </View>
               {!!syncError && <Text style={styles.error}>{syncError}</Text>}

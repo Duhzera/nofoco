@@ -93,6 +93,10 @@ export async function signInWithGoogle(): Promise<AuthResult> {
       options: {
         redirectTo: redirectUrl,
         skipBrowserRedirect: true,
+        queryParams: {
+          prompt: 'select_account',
+          access_type: 'offline',
+        },
       },
     });
 

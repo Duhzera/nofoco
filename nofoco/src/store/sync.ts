@@ -38,7 +38,23 @@ type SyncState = {
   restore: () => Promise<void>;
 };
 
-const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const errMsg = (e: unknown): string => {
+  if (!e) return 'Erro desconhecido na sincronização.';
+  if (typeof e === 'string') return e;
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object') {
+    const obj = e as Record<string, unknown>;
+    if (typeof obj.message === 'string') return obj.message;
+    if (typeof obj.error_description === 'string') return obj.error_description;
+    if (typeof obj.hint === 'string') return obj.hint;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return 'Erro na comunicação com o banco de dados.';
+    }
+  }
+  return String(e);
+};
 
 /**
  * Enquanto aplicamos um pull, os stores mudam e disparariam auto-push de volta.
@@ -60,7 +76,7 @@ export const useSync = create<SyncState>()(
         set({ status: 'syncing', error: null });
         try {
           await pushAll(uid);
-          set({ status: 'done', lastSyncAt: Date.now() });
+          set({ status: 'done', error: null, lastSyncAt: Date.now() });
         } catch (e) {
           set({ status: 'error', error: errMsg(e) });
         }
@@ -73,7 +89,7 @@ export const useSync = create<SyncState>()(
         try {
           applying = true;
           await pullAll(uid);
-          set({ status: 'done', lastSyncAt: Date.now() });
+          set({ status: 'done', error: null, lastSyncAt: Date.now() });
         } catch (e) {
           set({ status: 'error', error: errMsg(e) });
         } finally {
@@ -102,7 +118,7 @@ async function bind(uid: string) {
     } else {
       await pushAll(uid);
     }
-    useSync.setState({ boundUser: uid, status: 'done', lastSyncAt: Date.now() });
+    useSync.setState({ boundUser: uid, status: 'done', error: null, lastSyncAt: Date.now() });
   } catch (e) {
     useSync.setState({ status: 'error', error: errMsg(e) });
   } finally {
@@ -115,7 +131,7 @@ if (supabase) {
   useAuth.subscribe((s) => {
     const uid = s.user?.id ?? null;
     if (uid) void bind(uid);
-    else useSync.setState({ boundUser: null, status: 'idle' });
+    else useSync.setState({ boundUser: null, status: 'idle', error: null });
   });
   // caso já exista sessão no arranque
   const current = useAuth.getState().user?.id;

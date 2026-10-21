@@ -25,6 +25,11 @@ create table if not exists public.profiles (
   updated_at        timestamptz not null default now()
 );
 
+-- Garante que colunas adicionadas em versões posteriores existam mesmo se a tabela já foi criada antes
+alter table public.profiles add column if not exists target_weight_kg numeric;
+alter table public.profiles add column if not exists weekly_rate_kg numeric;
+alter table public.profiles add column if not exists custom_macros jsonb;
+
 -- ───────────────────────────── REFEIÇÕES ──────────────────────────────
 create table if not exists public.meals (
   user_id     uuid not null references auth.users on delete cascade,

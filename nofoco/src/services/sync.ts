@@ -46,24 +46,42 @@ export async function pushAll(uid: string): Promise<void> {
   // perfil (uma linha)
   const { profile, onboarded } = useProfile.getState();
   {
-    const { error } = await supabase.from('profiles').upsert(
-      {
-        user_id: uid,
-        sex: profile.sex,
-        age: profile.age,
-        height_cm: profile.heightCm,
-        weight_kg: profile.weightKg,
-        activity: profile.activity,
-        objective: profile.objective,
-        target_weight_kg: profile.targetWeightKg ?? null,
-        weekly_rate_kg: profile.weeklyRateKg ?? null,
-        custom_macros: profile.customMacros ?? null,
-        onboarded,
-        updated_at: at,
-      },
-      { onConflict: 'user_id' },
-    );
-    if (error) throw error;
+    const fullPayload = {
+      user_id: uid,
+      sex: profile.sex,
+      age: profile.age,
+      height_cm: profile.heightCm,
+      weight_kg: profile.weightKg,
+      activity: profile.activity,
+      objective: profile.objective,
+      target_weight_kg: profile.targetWeightKg ?? null,
+      weekly_rate_kg: profile.weeklyRateKg ?? null,
+      custom_macros: profile.customMacros ?? null,
+      onboarded,
+      updated_at: at,
+    };
+
+    const { error } = await supabase.from('profiles').upsert(fullPayload, { onConflict: 'user_id' });
+    if (error) {
+      // Se colunas novas (target_weight_kg, custom_macros) ainda não existirem no Supabase, salva colunas base
+      if (error.code === '42703' || error.message?.includes('column')) {
+        const basePayload = {
+          user_id: uid,
+          sex: profile.sex,
+          age: profile.age,
+          height_cm: profile.heightCm,
+          weight_kg: profile.weightKg,
+          activity: profile.activity,
+          objective: profile.objective,
+          onboarded,
+          updated_at: at,
+        };
+        const fallbackRes = await supabase.from('profiles').upsert(basePayload, { onConflict: 'user_id' });
+        if (fallbackRes.error) throw fallbackRes.error;
+      } else {
+        throw error;
+      }
+    }
   }
 
   // refeições
@@ -158,52 +176,46 @@ export async function pullAll(uid: string): Promise<void> {
         objective: prof.data.objective as Objective,
         targetWeightKg: prof.data.target_weight_kg ? Number(prof.data.target_weight_kg) : undefined,
         weeklyRateKg: prof.data.weekly_rate_kg ? Number(prof.data.weekly_rate_kg) : undefined,
-        customMacros: prof.data.custom_macros as CustomMacros | undefined,
+        customMacros: (prof.data.custom_macros as CustomMacros) ?? undefined,
       },
       onboarded: Boolean(prof.data.onboarded),
     });
   }
 
-  const mealRows = (meals.data ?? []) as {
-    meal_id: string;
-    name: string;
-    time: string;
-    emoji: string;
-    pct: number;
-  }[];
-  const localMeals: Meal[] = mealRows
-    .map((r) => ({ id: r.meal_id, name: r.name, time: r.time, emoji: r.emoji, pct: Number(r.pct) }))
-    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-  if (localMeals.length) useMeals.setState({ meals: localMeals });
-
-  const weightRows = (weight.data ?? []) as { date: string; kg: number }[];
-  const log: Record<string, number> = {};
-  for (const r of weightRows) log[r.date] = Number(r.kg);
-  useWeight.setState({ log });
-
-  const diaryRows = (diary.data ?? []) as {
-    item_id: string;
-    day: string;
-    meal_id: string;
-    food_id: string;
-    name: string;
-    emoji: string;
-    grams: number;
-    portion_label: string;
-    macros: DiaryItem['macros'];
-  }[];
-  const daysOut: DiaryDays = {};
-  for (const r of diaryRows) {
-    (daysOut[r.day] ??= {})[r.meal_id] ??= [];
-    daysOut[r.day][r.meal_id].push({
-      id: r.item_id,
-      foodId: r.food_id,
-      name: r.name,
-      emoji: r.emoji,
-      grams: Number(r.grams),
-      portionLabel: r.portion_label,
-      macros: r.macros,
-    });
+  if (meals.data?.length) {
+    const parsed: Meal[] = meals.data.map((m) => ({
+      id: m.meal_id,
+      name: m.name,
+      time: m.time,
+      emoji: m.emoji,
+      pct: Number(m.pct),
+    }));
+    parsed.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    useMeals.setState({ meals: parsed });
   }
-  useDiary.setState({ days: daysOut });
+
+  if (weight.data?.length) {
+    const log: Record<string, number> = {};
+    for (const r of weight.data) log[r.date] = Number(r.kg);
+    useWeight.setState({ log });
+  }
+
+  if (diary.data) {
+    const days: DiaryDays = {};
+    for (const r of diary.data) {
+      const it: DiaryItem = {
+        id: r.item_id,
+        foodId: r.food_id,
+        name: r.name,
+        emoji: r.emoji,
+        grams: Number(r.grams),
+        portionLabel: r.portion_label,
+        macros: r.macros,
+      };
+      if (!days[r.day]) days[r.day] = {};
+      if (!days[r.day][r.meal_id]) days[r.day][r.meal_id] = [];
+      days[r.day][r.meal_id].push(it);
+    }
+    useDiary.setState({ days });
+  }
 }
