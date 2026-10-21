@@ -14,7 +14,9 @@ import {
   bmiClass,
   computeGoal,
   healthyWeightRange,
+  isAggressivePace,
   OBJECTIVES,
+  safeMaxWeeklyLoss,
   WEEKLY_RATES,
   type Activity,
   type Objective,
@@ -81,6 +83,41 @@ export default function PerfilScreen() {
     if (day === todayKey()) setProfile({ weightKg: kg });
   };
 
+  const custom = profile.customMacros;
+  const isCustom = Boolean(custom?.enabled);
+
+  const toggleCustomMacros = (enable: boolean) => {
+    if (enable) {
+      setProfile({
+        customMacros: {
+          enabled: true,
+          kcal: custom?.kcal ?? goal.kcal,
+          carb: custom?.carb ?? goal.carb,
+          protein: custom?.protein ?? goal.protein,
+          fat: custom?.fat ?? goal.fat,
+          fiber: custom?.fiber ?? goal.fiber,
+        },
+      });
+    } else {
+      setProfile({
+        customMacros: {
+          ...custom,
+          enabled: false,
+        },
+      });
+    }
+  };
+
+  const updateCustomMacro = (key: 'kcal' | 'carb' | 'protein' | 'fat' | 'fiber', val: number) => {
+    setProfile({
+      customMacros: {
+        enabled: true,
+        ...profile.customMacros,
+        [key]: val > 0 ? val : undefined,
+      },
+    });
+  };
+
   return (
     <Screen>
       <View style={styles.header}>
@@ -89,16 +126,21 @@ export default function PerfilScreen() {
 
       {/* meta calculada */}
       <View style={styles.goalCard}>
-        <Text style={styles.goalLabel}>Sua meta diária</Text>
+        <Text style={styles.goalLabel}>
+          {isCustom ? 'Sua meta diária (Personalizada)' : 'Sua meta diária'}
+        </Text>
         <Text style={styles.goalKcal}>{goal.kcal.toLocaleString('pt-BR')}</Text>
         <Text style={styles.goalUnit}>kcal / dia</Text>
         <View style={styles.how}>
-          <Text style={styles.howText}>{OBJECTIVES[profile.objective].short}</Text>
+          <Text style={styles.howText}>
+            {isCustom ? 'Ajuste manual ativado' : OBJECTIVES[profile.objective].short}
+          </Text>
         </View>
         <View style={styles.goalMacros}>
           <MacroPill value={`${goal.carb}g`} label="Carbo" color={NoFoco.carb} />
           <MacroPill value={`${goal.protein}g`} label="Proteína" color={NoFoco.protein} />
           <MacroPill value={`${goal.fat}g`} label="Gordura" color={NoFoco.fat} />
+          <MacroPill value={`${goal.fiber}g`} label="Fibras" color={NoFoco.micro} />
         </View>
       </View>
 
@@ -135,122 +177,202 @@ export default function PerfilScreen() {
         </View>
       </CollapsibleSection>
 
+      {/* ajuste fino manual de macronutrientes */}
+      <CollapsibleSection
+        title="Ajuste de macronutrientes"
+        summary={isCustom ? 'Personalizado (Manual)' : 'Automático (Mifflin-St Jeor)'}>
+        <View style={styles.rateWrap}>
+          <Pressable
+            onPress={() => toggleCustomMacros(false)}
+            style={[styles.rateChip, !isCustom && styles.chipOn]}>
+            <Text style={[styles.chipText, !isCustom && styles.chipTextOn]}>
+              Automático
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => toggleCustomMacros(true)}
+            style={[styles.rateChip, isCustom && styles.chipOn]}>
+            <Text style={[styles.chipText, isCustom && styles.chipTextOn]}>
+              Personalizado
+            </Text>
+          </Pressable>
+        </View>
+
+        {!isCustom ? (
+          <Text style={styles.hint}>
+            Metas calculadas a partir do seu peso e objetivo: Proteína {OBJECTIVES[profile.objective].proteinPerKg}g/kg, Gordura 0,9g/kg, Carboidrato pelo saldo calórico e Fibras 14g por 1.000 kcal.
+          </Text>
+        ) : (
+          <View style={{ marginTop: Spacing.md }}>
+            <View style={styles.card}>
+              <Field
+                label="Calorias"
+                unit="kcal"
+                value={custom?.kcal ?? goal.kcal}
+                onChange={(t) => updateCustomMacro('kcal', num(t))}
+              />
+              <Field
+                label="Carboidratos"
+                unit="g"
+                value={custom?.carb ?? goal.carb}
+                onChange={(t) => updateCustomMacro('carb', num(t))}
+              />
+              <Field
+                label="Proteínas"
+                unit="g"
+                value={custom?.protein ?? goal.protein}
+                onChange={(t) => updateCustomMacro('protein', num(t))}
+              />
+              <Field
+                label="Gorduras"
+                unit="g"
+                value={custom?.fat ?? goal.fat}
+                onChange={(t) => updateCustomMacro('fat', num(t))}
+              />
+              <Field
+                label="Fibras"
+                unit="g"
+                value={custom?.fiber ?? goal.fiber}
+                onChange={(t) => updateCustomMacro('fiber', num(t))}
+                last
+              />
+            </View>
+            <Pressable
+              onPress={() => {
+                setProfile({
+                  customMacros: {
+                    enabled: true,
+                    kcal: undefined,
+                    carb: undefined,
+                    protein: undefined,
+                    fat: undefined,
+                    fiber: undefined,
+                  },
+                });
+              }}
+              style={{ marginTop: Spacing.sm }}>
+              <Text style={styles.reset}>Preencher com valores padrão calculados</Text>
+            </Pressable>
+          </View>
+        )}
+      </CollapsibleSection>
+
       {/* dados */}
       <CollapsibleSection
         title="Seus dados"
         summary={`${profile.sex === 'M' ? 'M' : 'F'} · ${profile.age}a · ${profile.heightCm}cm · ${formatKg(currentKg)}kg`}>
-      <View style={styles.card}>
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>Sexo</Text>
-          <View style={styles.chips}>
-            {(['M', 'F'] as const).map((sx) => (
-              <Pressable
-                key={sx}
-                onPress={() => setProfile({ sex: sx })}
-                style={[styles.chip, profile.sex === sx && styles.chipOn]}>
-                <Text style={[styles.chipText, profile.sex === sx && styles.chipTextOn]}>
-                  {sx === 'M' ? 'Masculino' : 'Feminino'}
-                </Text>
-              </Pressable>
-            ))}
+        <View style={styles.card}>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Sexo</Text>
+            <View style={styles.chips}>
+              {(['M', 'F'] as const).map((sx) => (
+                <Pressable
+                  key={sx}
+                  onPress={() => setProfile({ sex: sx })}
+                  style={[styles.chip, profile.sex === sx && styles.chipOn]}>
+                  <Text style={[styles.chipText, profile.sex === sx && styles.chipTextOn]}>
+                    {sx === 'M' ? 'Masculino' : 'Feminino'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
 
-        <Field label="Idade" unit="anos" value={profile.age} onChange={(t) => setProfile({ age: num(t) })} />
-        <Field label="Altura" unit="cm" value={profile.heightCm} onChange={(t) => setProfile({ heightCm: num(t) })} />
-        <WeightField
-          label="Peso atual"
-          valueKg={currentKg}
-          onCommit={(kg) => logWeight(todayKey(), kg)}
-          last
-        />
-      </View>
+          <Field label="Idade" unit="anos" value={profile.age} onChange={(t) => setProfile({ age: num(t) })} />
+          <Field label="Altura" unit="cm" value={profile.heightCm} onChange={(t) => setProfile({ heightCm: num(t) })} />
+          <WeightField
+            label="Peso atual"
+            valueKg={currentKg}
+            onCommit={(k) => logWeight(todayKey(), k)}
+            last
+          />
+        </View>
       </CollapsibleSection>
 
       {/* peso alvo + previsão */}
       <CollapsibleSection
         title="Peso alvo"
         summary={profile.targetWeightKg ? `${formatKg(profile.targetWeightKg)} kg` : 'não definido'}>
-      <View style={styles.card}>
-        <View style={styles.fieldRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Quero chegar em</Text>
-            <Text style={styles.fieldHelp}>
-              Faixa saudável para {profile.heightCm} cm: {healthy.min}–{healthy.max} kg
-            </Text>
-          </View>
-          <View style={styles.fieldInputWrap}>
-            <TextInput
-              value={profile.targetWeightKg ? String(profile.targetWeightKg) : ''}
-              onChangeText={(t) => {
-                const n = num(t);
-                setProfile({ targetWeightKg: n > 0 ? n : undefined });
-              }}
-              keyboardType="number-pad"
-              placeholder="—"
-              placeholderTextColor={NoFoco.soft}
-              style={styles.fieldInput}
-              maxLength={3}
-              selectTextOnFocus
-            />
-            <Text style={styles.fieldUnit}>kg</Text>
-          </View>
-        </View>
-
-        {forecast.kind === 'ok' && (
-          <View style={styles.forecast}>
-            <Text style={styles.forecastWeeks}>{formatDuration(forecast.weeks)}</Text>
-            <Text style={styles.forecastDate}>
-              chegaria por volta de {formatFullDate(forecast.date)}
-            </Text>
-            <Text style={styles.forecastSource}>
-              {profile.weeklyRateKg
-                ? `no ritmo de ${kg(profile.weeklyRateKg)} kg/semana que você definiu`
-                : 'no ritmo que a sua meta atual produz'}
-            </Text>
-            <View style={styles.forecastRow}>
-              <ForecastStat value={`${kg(forecast.avgWeeklyKg)} kg`} label="por semana (média)" />
-              <ForecastStat value={`${forecast.weeks}`} label="semanas" />
-              <ForecastStat
-                value={`${kg(Math.abs(currentKg - (profile.targetWeightKg ?? 0)))} kg`}
-                label="a percorrer"
-              />
+        <View style={styles.card}>
+          <View style={styles.fieldRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Quero chegar em</Text>
+              <Text style={styles.fieldHelp}>
+                Faixa saudável para {profile.heightCm} cm: {healthy.min}–{healthy.max} kg
+              </Text>
             </View>
-            <Text style={styles.forecastNote}>{forecastNote(forecast)}</Text>
+            <View style={styles.fieldInputWrap}>
+              <TextInput
+                value={profile.targetWeightKg ? String(profile.targetWeightKg) : ''}
+                onChangeText={(t) => {
+                  const n = num(t);
+                  setProfile({ targetWeightKg: n > 0 ? n : undefined });
+                }}
+                keyboardType="number-pad"
+                placeholder="—"
+                placeholderTextColor={NoFoco.soft}
+                style={styles.fieldInput}
+                maxLength={3}
+                selectTextOnFocus
+              />
+              <Text style={styles.fieldUnit}>kg</Text>
+            </View>
+          </View>
+
+          {forecast.kind === 'ok' && (
+            <View style={styles.forecast}>
+              <Text style={styles.forecastWeeks}>{formatDuration(forecast.weeks)}</Text>
+              <Text style={styles.forecastDate}>
+                chegaria por volta de {formatFullDate(forecast.date)}
+              </Text>
+              <Text style={styles.forecastSource}>
+                {profile.weeklyRateKg
+                  ? `no ritmo de ${kg(profile.weeklyRateKg)} kg/semana que você definiu`
+                  : 'no ritmo que a sua meta atual produz'}
+              </Text>
+              <View style={styles.forecastRow}>
+                <ForecastStat value={`${kg(forecast.avgWeeklyKg)} kg`} label="por semana (média)" />
+                <ForecastStat value={`${forecast.weeks}`} label="semanas" />
+                <ForecastStat
+                  value={`${kg(Math.abs(currentKg - (profile.targetWeightKg ?? 0)))} kg`}
+                  label="a percorrer"
+                />
+              </View>
+              <Text style={styles.forecastNote}>{forecastNote(forecast)}</Text>
+            </View>
+          )}
+
+          {forecast.kind === 'alcancado' && (
+            <Text style={styles.forecastMsg}>Você já está no peso que definiu 🎯</Text>
+          )}
+          {forecast.kind === 'sentido-oposto' && (
+            <Text style={styles.forecastMsg}>
+              O objetivo “{OBJECTIVES[profile.objective].label}” leva o peso para o lado contrário do
+              alvo. Ajuste um dos dois para ver a previsão.
+            </Text>
+          )}
+          {forecast.kind === 'sem-ritmo' && (
+            <Text style={styles.forecastMsg}>
+              Na manutenção o peso tende a ficar estável. Escolha outro objetivo para ver uma previsão.
+            </Text>
+          )}
+          {forecast.kind === 'muito-longo' && (
+            <Text style={styles.forecastMsg}>
+              Nesse ritmo levaria mais de 5 anos. Um ritmo um pouco maior deixa a meta mais palpável.
+            </Text>
+          )}
+        </View>
+
+        {targetBmi !== null && bmiClass(targetBmi) === 'abaixo' && (
+          <View style={[styles.warn, { marginTop: Spacing.md }]}>
+            <Ionicons name="alert-circle-outline" size={16} color={NoFoco.warning} />
+            <Text style={styles.warnText}>
+              Esse alvo fica abaixo da faixa de peso considerada saudável para a sua altura (IMC{' '}
+              {targetBmi.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              ). Vale conversar com um nutricionista ou médico antes de seguir.
+            </Text>
           </View>
         )}
-
-        {forecast.kind === 'alcancado' && (
-          <Text style={styles.forecastMsg}>Você já está no peso que definiu 🎯</Text>
-        )}
-        {forecast.kind === 'sentido-oposto' && (
-          <Text style={styles.forecastMsg}>
-            O objetivo “{OBJECTIVES[profile.objective].label}” leva o peso para o lado contrário do
-            alvo. Ajuste um dos dois para ver a previsão.
-          </Text>
-        )}
-        {forecast.kind === 'sem-ritmo' && (
-          <Text style={styles.forecastMsg}>
-            Na manutenção o peso tende a ficar estável. Escolha outro objetivo para ver uma previsão.
-          </Text>
-        )}
-        {forecast.kind === 'muito-longo' && (
-          <Text style={styles.forecastMsg}>
-            Nesse ritmo levaria mais de 5 anos. Um ritmo um pouco maior deixa a meta mais palpável.
-          </Text>
-        )}
-      </View>
-
-      {targetBmi !== null && bmiClass(targetBmi) === 'abaixo' && (
-        <View style={[styles.warn, { marginTop: Spacing.md }]}>
-          <Ionicons name="alert-circle-outline" size={16} color={NoFoco.warning} />
-          <Text style={styles.warnText}>
-            Esse alvo fica abaixo da faixa de peso considerada saudável para a sua altura (IMC{' '}
-            {targetBmi.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-            ). Vale conversar com um nutricionista ou médico antes de seguir.
-          </Text>
-        </View>
-      )}
       </CollapsibleSection>
 
       {/* ritmo */}
@@ -285,6 +407,16 @@ export default function PerfilScreen() {
               ? `Você fixou a velocidade, então a meta de calorias é que se ajusta: ${goal.kcal.toLocaleString('pt-BR')} kcal por dia. Mudar seu nível de atividade altera quanto você pode comer — não o tempo da previsão.`
               : `No automático a meta sai do ajuste do objetivo (${OBJECTIVES[profile.objective].short.toLowerCase()}), proporcional ao seu gasto. Aqui o nível de atividade encurta ou alonga a previsão.`}
           </Text>
+
+          {/* Alerta de ritmo agressivo */}
+          {profile.objective === 'perder' && isAggressivePace(profile.weeklyRateKg, currentKg) && (
+            <View style={[styles.warn, { marginTop: Spacing.md }]}>
+              <Ionicons name="alert-circle-outline" size={16} color={NoFoco.warning} />
+              <Text style={styles.warnText}>
+                Ritmo agressivo: perder {kg(profile.weeklyRateKg!)} kg/semana ultrapassa 1% do seu peso ({kg(safeMaxWeeklyLoss(currentKg))} kg/sem). Isso aumenta a perda de massa magra e o risco de desaceleração metabólica. Recomendamos ritmos de 0,25 a 0,5 kg/sem.
+              </Text>
+            </View>
+          )}
 
           {goal.capped && (
             <View style={[styles.warn, { marginTop: Spacing.md }]}>
@@ -322,48 +454,48 @@ export default function PerfilScreen() {
         <Text style={styles.reset} onPress={resetMeals}>
           Restaurar padrão
         </Text>
-      <View style={styles.card}>
-        {meals.map((m, i) => (
-          <View key={m.id} style={[styles.splitRow, i > 0 && styles.splitBorder]}>
-            <Text style={styles.splitEmoji}>{m.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.splitName}>{m.name}</Text>
-              <Text style={styles.splitKcal}>
-                {m.time} · {mealTarget(goal.kcal, meals, m.id)} kcal
-              </Text>
+        <View style={styles.card}>
+          {meals.map((m, i) => (
+            <View key={m.id} style={[styles.splitRow, i > 0 && styles.splitBorder]}>
+              <Text style={styles.splitEmoji}>{m.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.splitName}>{m.name}</Text>
+                <Text style={styles.splitKcal}>
+                  {m.time} · {mealTarget(goal.kcal, meals, m.id)} kcal
+                </Text>
+              </View>
+              <View style={styles.pctStepper}>
+                <Text
+                  style={styles.pctBtn}
+                  onPress={() => updateMeal(m.id, { pct: Math.max(0, m.pct - 5) })}>
+                  −
+                </Text>
+                <Text style={styles.pctValue}>{m.pct}%</Text>
+                <Text
+                  style={styles.pctBtn}
+                  onPress={() => updateMeal(m.id, { pct: Math.min(100, m.pct + 5) })}>
+                  +
+                </Text>
+              </View>
             </View>
-            <View style={styles.pctStepper}>
-              <Text
-                style={styles.pctBtn}
-                onPress={() => updateMeal(m.id, { pct: Math.max(0, m.pct - 5) })}>
-                −
-              </Text>
-              <Text style={styles.pctValue}>{m.pct}%</Text>
-              <Text
-                style={styles.pctBtn}
-                onPress={() => updateMeal(m.id, { pct: Math.min(100, m.pct + 5) })}>
-                +
-              </Text>
+          ))}
+          {meals.length === 0 ? (
+            <View style={styles.splitRow}>
+              <Text style={styles.splitKcal}>Nenhuma refeição criada ainda.</Text>
             </View>
-          </View>
-        ))}
-        {meals.length === 0 ? (
-          <View style={styles.splitRow}>
-            <Text style={styles.splitKcal}>Nenhuma refeição criada ainda.</Text>
-          </View>
-        ) : (
-          <View style={[styles.splitRow, styles.splitBorder, { justifyContent: 'space-between' }]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={[styles.totalValue, total !== 100 && { color: NoFoco.warning }]}>{total}%</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.hint}>
-        {total !== 100 && meals.length > 0
-          ? 'A soma não é 100% — tudo bem, o app distribui proporcionalmente, mas 100% fica mais preciso. '
-          : ''}
-        Para criar, renomear ou excluir refeições, use “Editar” na lista de refeições do Diário.
-      </Text>
+          ) : (
+            <View style={[styles.splitRow, styles.splitBorder, { justifyContent: 'space-between' }]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={[styles.totalValue, total !== 100 && { color: NoFoco.warning }]}>{total}%</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.hint}>
+          {total !== 100 && meals.length > 0
+            ? 'A soma não é 100% — tudo bem, o app distribui proporcionalmente, mas 100% fica mais preciso. '
+            : ''}
+          Para criar, renomear ou excluir refeições, use “Editar” na lista de refeições do Diário.
+        </Text>
       </CollapsibleSection>
 
       <View style={styles.disclaimer}>
@@ -398,7 +530,7 @@ function Field({
           onChangeText={onChange}
           keyboardType="number-pad"
           style={styles.fieldInput}
-          maxLength={3}
+          maxLength={4}
           selectTextOnFocus
         />
         <Text style={styles.fieldUnit}>{unit}</Text>
@@ -429,8 +561,8 @@ function WeightField({
           onChangeText={(t) => {
             const cleaned = t.replace(/[^\d.,]/g, '');
             setText(cleaned);
-            const kg = parseKg(cleaned);
-            if (kg > 0) onCommit(kg);
+            const k = parseKg(cleaned);
+            if (k > 0) onCommit(k);
           }}
           keyboardType="decimal-pad"
           style={styles.fieldInput}
@@ -571,7 +703,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
 
-
   warn: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -617,7 +748,6 @@ const styles = StyleSheet.create({
     backgroundColor: NoFoco.surface,
   },
 
-  splitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   reset: { color: NoFoco.accent, fontSize: 11.5, fontWeight: '700', marginBottom: Spacing.sm },
   splitRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
   splitBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: NoFoco.faint },

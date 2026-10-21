@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -118,7 +117,7 @@ export default function AlimentosScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyText}>Nenhum alimento encontrado para "{search}".</Text>
+              <Text style={styles.emptyText}>Nenhum alimento encontrado para &ldquo;{search}&rdquo;.</Text>
             </View>
           }
           renderItem={({ item }) => (

@@ -1,4 +1,4 @@
--- Schema de sincronização do NoFoco (perfil, refeições, peso e diário por usuário).
+-- Schema de sincronização do NoFoco (perfil, refeições, peso, diário, receitas e favoritos por usuário).
 -- Rode no Supabase → SQL Editor. Ver src/services/sync.ts e PLANEJAMENTO_APP.md §E9.
 --
 -- Cada linha pertence a um usuário (user_id = auth.uid()). As políticas de RLS
@@ -11,15 +11,18 @@
 
 -- ─────────────────────────────── PERFIL ───────────────────────────────
 create table if not exists public.profiles (
-  user_id     uuid primary key references auth.users on delete cascade,
-  sex         text,
-  age         int,
-  height_cm   numeric,
-  weight_kg   numeric,
-  activity    text,
-  objective   text,
-  onboarded   boolean not null default true,
-  updated_at  timestamptz not null default now()
+  user_id           uuid primary key references auth.users on delete cascade,
+  sex               text,
+  age               int,
+  height_cm         numeric,
+  weight_kg         numeric,
+  activity          text,
+  objective         text,
+  target_weight_kg  numeric,
+  weekly_rate_kg    numeric,
+  custom_macros     jsonb,
+  onboarded         boolean not null default true,
+  updated_at        timestamptz not null default now()
 );
 
 -- ───────────────────────────── REFEIÇÕES ──────────────────────────────
@@ -61,17 +64,41 @@ create table if not exists public.diary_items (
 
 create index if not exists diary_items_user_day on public.diary_items (user_id, day);
 
+-- ─────────────────────────────── RECEITAS ──────────────────────────────
+create table if not exists public.recipes (
+  user_id           uuid not null references auth.users on delete cascade,
+  recipe_id         text not null,
+  name              text not null,
+  emoji             text not null default '🍳',
+  cooked_weight_g   numeric,
+  portions          int not null default 1,
+  portion_name      text not null default 'fatia',
+  ingredients       jsonb not null,
+  updated_at        timestamptz not null default now(),
+  primary key (user_id, recipe_id)
+);
+
+-- ─────────────────────────────── FAVORITOS ─────────────────────────────
+create table if not exists public.favorites (
+  user_id     uuid not null references auth.users on delete cascade,
+  food_id     text not null,
+  created_at  timestamptz not null default now(),
+  primary key (user_id, food_id)
+);
+
 -- ───────────────────────── ROW LEVEL SECURITY ─────────────────────────
--- Mesma política para as quatro tabelas: dono total sobre as próprias linhas.
+-- Mesma política para todas as tabelas: dono total sobre as próprias linhas.
 alter table public.profiles     enable row level security;
 alter table public.meals        enable row level security;
 alter table public.weight_log   enable row level security;
 alter table public.diary_items  enable row level security;
+alter table public.recipes      enable row level security;
+alter table public.favorites    enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['profiles','meals','weight_log','diary_items'] loop
+  foreach t in array array['profiles','meals','weight_log','diary_items','recipes','favorites'] loop
     execute format('drop policy if exists %I_owner on public.%I', t, t);
     execute format(
       'create policy %I_owner on public.%I

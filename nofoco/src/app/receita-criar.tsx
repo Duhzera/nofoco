@@ -165,7 +165,7 @@ export default function ReceitaCriarScreen() {
         {ingredients.length === 0 ? (
           <View style={styles.emptyIngCard}>
             <Text style={styles.emptyIngText}>
-              Nenhum ingrediente adicionado ainda. Toque em "+ Adicionar" para compor sua receita.
+              Nenhum ingrediente adicionado ainda. Toque em &ldquo;+ Adicionar&rdquo; para compor sua receita.
             </Text>
           </View>
         ) : (

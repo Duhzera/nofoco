@@ -17,7 +17,7 @@ import { timeToMinutes, type Meal } from '@/store/meals';
 import { useMeals } from '@/store/meals';
 import { useProfile } from '@/store/profile';
 import { useWeight } from '@/store/weight';
-import type { Activity, Objective, Sex } from '@/lib/goal';
+import type { Activity, CustomMacros, Objective, Sex } from '@/lib/goal';
 
 const nowISO = () => new Date().toISOString();
 
@@ -55,6 +55,9 @@ export async function pushAll(uid: string): Promise<void> {
         weight_kg: profile.weightKg,
         activity: profile.activity,
         objective: profile.objective,
+        target_weight_kg: profile.targetWeightKg ?? null,
+        weekly_rate_kg: profile.weeklyRateKg ?? null,
+        custom_macros: profile.customMacros ?? null,
         onboarded,
         updated_at: at,
       },
@@ -153,6 +156,9 @@ export async function pullAll(uid: string): Promise<void> {
         weightKg: Number(prof.data.weight_kg),
         activity: prof.data.activity as Activity,
         objective: prof.data.objective as Objective,
+        targetWeightKg: prof.data.target_weight_kg ? Number(prof.data.target_weight_kg) : undefined,
+        weeklyRateKg: prof.data.weekly_rate_kg ? Number(prof.data.weekly_rate_kg) : undefined,
+        customMacros: prof.data.custom_macros as CustomMacros | undefined,
       },
       onboarded: Boolean(prof.data.onboarded),
     });

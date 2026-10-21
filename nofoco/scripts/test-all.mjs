@@ -2,7 +2,13 @@
  * Suite de Testes do NoFoco (Node.js nativo)
  */
 
-import { computeGoal, healthyWeightRange } from '../src/lib/goal.ts';
+import {
+  computeGoal,
+  healthyWeightRange,
+  checkSugarIntake,
+  isAggressivePace,
+  safeMaxWeeklyLoss,
+} from '../src/lib/goal.ts';
 import { forecastToTarget, formatDuration } from '../src/lib/forecast.ts';
 import { sumNutrient, formatNutrient, formatValue } from '../src/lib/nutrition.ts';
 import { resolveServings } from '../src/data/servings.ts';
@@ -220,6 +226,60 @@ console.log('\n--- 5. Testes da Tabela Nutricional (Regra undefined ≠ 0) ---')
   assert(sumSugar.complete === false, 'Açúcar marcado como incompleto (apenas 1 item informou)');
   assert(formatNutrient(sumSugar, 'g').includes('5 g'), 'Formatação de nutriente correta');
   assert(formatValue(undefined, 'g') === '—', 'Formatação de valor ausente vira travessão "—"');
+}
+
+// 6. REFINAMENTOS NUTRICIONAIS AVANÇADOS
+console.log('\n--- 6. Testes dos Refinamentos Nutricionais Avançados ---');
+{
+  // 6.1 Meta de Fibras (~14g por 1.000 kcal)
+  const p = {
+    sex: 'M',
+    age: 25,
+    heightCm: 175,
+    weightKg: 70,
+    activity: 'moderado',
+    objective: 'manter',
+  };
+  const g = computeGoal(p);
+  const expectedFiber = Math.round((g.kcal / 1000) * 14);
+  assert(g.fiber === expectedFiber, `Meta de fibras proporcional (~14g/1000kcal): ${g.fiber}g para ${g.kcal} kcal`);
+
+  // 6.2 Alerta OMS de Açúcar (<10% das calorias diárias)
+  const goalKcal = 2000;
+  // 10% de 2000 kcal = 200 kcal = 50g de açúcar (4 kcal/g)
+  const sugarSafe = checkSugarIntake(30, goalKcal);
+  assert(sugarSafe.isOver === false, 'Açúcar abaixo de 10% (30g = 6%) considerado seguro');
+  assert(sugarSafe.maxGrams === 50, 'Teto de 10% calculado como 50g para 2000 kcal');
+
+  const sugarOver = checkSugarIntake(65, goalKcal);
+  assert(sugarOver.isOver === true, 'Açúcar acima de 10% (65g = 13%) dispara alerta da OMS');
+  assert(sugarOver.pctKcal === 13, 'Percentual calórico do açúcar preciso (13%)');
+
+  // 6.3 Alerta de Ritmo Agressivo (>1% do peso/semana)
+  assert(isAggressivePace(0.5, 70) === false, '0.5 kg/sem para 70kg é ritmo seguro');
+  assert(isAggressivePace(0.75, 70) === true, '0.75 kg/sem para 70kg ultrapassa 1% e dispara alerta');
+  assert(safeMaxWeeklyLoss(70) === 0.7, 'Limite semanal de perda segura para 70kg é 0.7 kg');
+  assert(isAggressivePace(1.0, 110) === false, '1.0 kg/sem para 110kg é < 1% do peso corporal');
+
+  // 6.4 Ajuste Fino Manual de Macronutrientes
+  const pCustom = {
+    ...p,
+    customMacros: {
+      enabled: true,
+      kcal: 2200,
+      carb: 220,
+      protein: 180,
+      fat: 65,
+      fiber: 35,
+    },
+  };
+  const gCustom = computeGoal(pCustom);
+  assert(gCustom.isCustom === true, 'Modo personalizado ativado');
+  assert(gCustom.kcal === 2200, 'Calorias customizadas assumidas: 2200 kcal');
+  assert(gCustom.protein === 180, 'Proteína customizada assumida: 180g');
+  assert(gCustom.carb === 220, 'Carboidrato customizado assumido: 220g');
+  assert(gCustom.fat === 65, 'Gordura customizada assumida: 65g');
+  assert(gCustom.fiber === 35, 'Fibra customizada assumida: 35g');
 }
 
 console.log('\n======================================================');

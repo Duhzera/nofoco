@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CalorieGauge } from '@/components/ui/calorie-gauge';
@@ -11,7 +11,8 @@ import { Screen } from '@/components/ui/screen';
 import { WeekStrip } from '@/components/ui/week-strip';
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
 import { formatDayTitle, isToday } from '@/lib/date';
-import { computeGoal } from '@/lib/goal';
+import { checkSugarIntake, computeGoal } from '@/lib/goal';
+import { sumNutrient } from '@/lib/nutrition';
 import { dayPacing, mealTarget, nowMinutes } from '@/lib/pacing';
 import { dayItems, dayMacros, kcalByMeal, useDiary } from '@/store/diary';
 import { useDay } from '@/store/day';
@@ -34,6 +35,17 @@ export default function DiarioScreen() {
   const day = dayMacros(items, meals);
   const byMeal = kcalByMeal(items, meals);
   const pace = dayPacing(goal.kcal, meals, byMeal, nowMinutes(), today);
+
+  // Análise de açúcares pelo critério da OMS (< 10% das kcal diárias)
+  const allDayNutrients = useMemo(() => {
+    return meals.flatMap((m) => items[m.id] ?? []).map((it) => it.macros);
+  }, [meals, items]);
+
+  const sugarEval = useMemo(() => {
+    const sugarSum = sumNutrient(allDayNutrients, 'sugar');
+    if (!sugarSum || sugarSum.value <= 0) return null;
+    return checkSugarIntake(sugarSum.value, goal.kcal);
+  }, [allDayNutrients, goal.kcal]);
 
   // dias com algum lançamento — viram um pontinho na tira
   const registered = new Set(
@@ -72,10 +84,27 @@ export default function DiarioScreen() {
         <CoachBanner status={pace.status} message={pace.message} />
       </View>
 
+      {/* Alerta de açúcares conforme diretrizes da OMS */}
+      {sugarEval && sugarEval.isOver && (
+        <View style={styles.sugarBanner}>
+          <Ionicons name="warning-outline" size={18} color={NoFoco.warning} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sugarBannerTitle}>
+              Alerta OMS · Açúcar elevado ({sugarEval.consumedGrams}g)
+            </Text>
+            <Text style={styles.sugarBannerText}>
+              Açúcares somam {sugarEval.pctKcal}% das calorias diárias. A OMS recomenda no máximo 10% ({sugarEval.maxGrams}g) para preservar a sensibilidade à insulina.
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* 4 Macros principais: Carbo, Proteína, Gordura e Fibras */}
       <View style={styles.macros}>
         <MacroBar label="Carbo" consumed={day.carb} goal={goal.carb} color={NoFoco.carb} />
         <MacroBar label="Proteína" consumed={day.protein} goal={goal.protein} color={NoFoco.protein} />
         <MacroBar label="Gordura" consumed={day.fat} goal={goal.fat} color={NoFoco.fat} />
+        <MacroBar label="Fibras" consumed={day.fiber} goal={goal.fiber} color={NoFoco.micro} />
       </View>
 
       <View style={styles.sectionRow}>
@@ -162,9 +191,22 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   todayBtnText: { color: NoFoco.onAccent, fontSize: 12, fontWeight: '800' },
+  sugarBanner: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(242,163,60,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: NoFoco.warning,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  sugarBannerTitle: { color: NoFoco.warning, fontSize: 12.5, fontWeight: '700' },
+  sugarBannerText: { color: NoFoco.ink, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
   macros: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    gap: Spacing.sm,
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
   },

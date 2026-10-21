@@ -77,14 +77,15 @@ export default function PorcaoScreen() {
 
   const [grams, setGrams] = useState(existing?.grams ?? currentUnitGrams);
 
-  // Sincroniza a porção inicial sempre que um alimento carregar
-  useEffect(() => {
+  // Ajusta porção padrão durante a renderização se o alimento mudar
+  const [prevId, setPrevId] = useState(id);
+  if (id !== prevId) {
+    setPrevId(id);
     if (!existing && servings.length > 0) {
-      const first = servings[0];
-      setSelectedServingId(first.id);
-      setGrams(first.grams);
+      setSelectedServingId(servings[0].id);
+      setGrams(servings[0].grams);
     }
-  }, [id, servings.length]);
+  }
 
   const [meal, setMeal] = useState<MealId | undefined>(
     () => (mealParam && findMeal(meals, mealParam)?.id) || nearestMealId(meals),

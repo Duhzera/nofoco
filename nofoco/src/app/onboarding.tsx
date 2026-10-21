@@ -9,7 +9,10 @@ import { todayKey } from '@/lib/date';
 import {
   ACTIVITY,
   computeGoal,
+  isAggressivePace,
   OBJECTIVES,
+  safeMaxWeeklyLoss,
+  WEEKLY_RATES,
   type Activity,
   type Objective,
   type Sex,
@@ -33,6 +36,7 @@ export default function OnboardingScreen() {
   const [weightText, setWeightText] = useState('');
   const [activity, setActivity] = useState<Activity>('moderado');
   const [objective, setObjective] = useState<Objective>('perder');
+  const [weeklyRate, setWeeklyRate] = useState<number | undefined>(undefined);
   const [targetText, setTargetText] = useState('');
 
   const ageN = parseInt(age, 10) || 0;
@@ -43,7 +47,15 @@ export default function OnboardingScreen() {
   const ready = ageN >= 10 && ageN <= 120 && heightN >= 100 && heightN <= 250 && weightN > 0;
 
   const goal = ready
-    ? computeGoal({ sex, age: ageN, heightCm: heightN, weightKg: weightN, activity, objective })
+    ? computeGoal({
+        sex,
+        age: ageN,
+        heightCm: heightN,
+        weightKg: weightN,
+        activity,
+        objective,
+        weeklyRateKg: weeklyRate,
+      })
     : null;
 
   const finish = () => {
@@ -55,12 +67,15 @@ export default function OnboardingScreen() {
       weightKg: weightN,
       activity,
       objective,
+      weeklyRateKg: weeklyRate,
       ...(targetN > 0 ? { targetWeightKg: targetN } : {}),
     });
     setWeight(todayKey(), weightN);
     completeOnboarding();
     router.replace('/(tabs)');
   };
+
+  const isAggressive = isAggressivePace(weeklyRate, weightN);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -105,6 +120,43 @@ export default function OnboardingScreen() {
           <NumRow label="Peso atual" unit="kg" value={weightText} onChange={setWeightText} decimal last />
         </View>
 
+        {/* Ritmo desejado quando o objetivo for perder */}
+        {objective === 'perder' && (
+          <>
+            <Text style={styles.section}>Ritmo desejado</Text>
+            <View style={styles.grid}>
+              <Pressable
+                onPress={() => setWeeklyRate(undefined)}
+                style={[styles.chip, weeklyRate === undefined && styles.chipOn]}>
+                <Text style={[styles.chipText, weeklyRate === undefined && styles.chipTextOn]}>
+                  Automático
+                </Text>
+              </Pressable>
+              {WEEKLY_RATES.map((r) => {
+                const on = weeklyRate === r;
+                return (
+                  <Pressable
+                    key={r}
+                    onPress={() => setWeeklyRate(r)}
+                    style={[styles.chip, on && styles.chipOn]}>
+                    <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                      {r.toLocaleString('pt-BR')} kg/sem
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {isAggressive && (
+              <View style={styles.warn}>
+                <Ionicons name="alert-circle-outline" size={16} color={NoFoco.warning} />
+                <Text style={styles.warnText}>
+                  Ritmo agressivo: para seu peso ({weightN} kg), perder mais de {safeMaxWeeklyLoss(weightN).toLocaleString('pt-BR')} kg/semana acelera a perda de massa magra e o efeito rebote. Recomendamos até 0,5 kg/sem.
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
         <Text style={styles.section}>Nível de atividade</Text>
         <View style={styles.grid}>
           {(Object.keys(ACTIVITY) as Activity[]).map((k) => {
@@ -133,6 +185,7 @@ export default function OnboardingScreen() {
                 <PreviewMacro value={`${goal.carb}g`} label="Carbo" color={NoFoco.carb} />
                 <PreviewMacro value={`${goal.protein}g`} label="Proteína" color={NoFoco.protein} />
                 <PreviewMacro value={`${goal.fat}g`} label="Gordura" color={NoFoco.fat} />
+                <PreviewMacro value={`${goal.fiber}g`} label="Fibras" color={NoFoco.micro} />
               </View>
             </>
           ) : (
@@ -247,6 +300,19 @@ const styles = StyleSheet.create({
   chipText: { color: NoFoco.soft, fontSize: 12, fontWeight: '700' },
   chipTextOn: { color: NoFoco.accent },
   chipsInline: { flexDirection: 'row', gap: Spacing.sm },
+
+  warn: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(242,163,60,0.10)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: NoFoco.warning,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  warnText: { flex: 1, color: NoFoco.warning, fontSize: 11.5, lineHeight: 16 },
 
   card: {
     backgroundColor: NoFoco.surface,

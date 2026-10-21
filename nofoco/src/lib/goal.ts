@@ -7,6 +7,15 @@ export type Sex = 'M' | 'F';
 export type Activity = 'sedentario' | 'leve' | 'moderado' | 'ativo' | 'muito';
 export type Objective = 'perder' | 'manter' | 'ganhar' | 'recomp';
 
+export type CustomMacros = {
+  enabled: boolean;
+  kcal?: number;
+  carb?: number;
+  protein?: number;
+  fat?: number;
+  fiber?: number;
+};
+
 export type Profile = {
   sex: Sex;
   age: number;
@@ -22,6 +31,11 @@ export type Profile = {
    * Fica `undefined` no modo automático.
    */
   weeklyRateKg?: number;
+  /**
+   * Ajuste fino manual de macronutrientes. Quando habilitado, substitui o cálculo
+   * automático proporcional da fórmula.
+   */
+  customMacros?: CustomMacros;
 };
 
 /**
@@ -59,12 +73,15 @@ export type Goal = {
   carb: number;
   protein: number;
   fat: number;
+  fiber: number;
   tmb: number;
   tdee: number;
   /** Piso de segurança aplicado à meta (nunca abaixo da TMB nem do mínimo absoluto). */
   floor: number;
   /** `true` quando o ritmo pedido exigiria comer abaixo do piso e a meta foi travada. */
   capped: boolean;
+  /** `true` quando metas manuais personalizadas estão ativas. */
+  isCustom?: boolean;
 };
 
 /**
@@ -99,11 +116,89 @@ export function computeGoal(p: Profile): Goal {
   const capped = kcal < floor;
   if (capped) kcal = floor;
 
+  // Se o usuário personalizou macros manualmente
+  if (p.customMacros?.enabled) {
+    const protein = p.customMacros.protein ?? Math.round(p.weightKg * obj.proteinPerKg);
+    const fat = p.customMacros.fat ?? Math.round(p.weightKg * 0.9);
+    const carb = p.customMacros.carb ?? Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+    const finalKcal = p.customMacros.kcal ?? (protein * 4 + fat * 9 + carb * 4);
+    // Meta de fibras: recomendação da IOM / Dietary Guidelines (~14g a cada 1000 kcal)
+    const fiber = p.customMacros.fiber ?? Math.round((finalKcal / 1000) * 14);
+
+    return {
+      kcal: finalKcal,
+      carb,
+      protein,
+      fat,
+      fiber,
+      tmb: Math.round(tmb),
+      tdee: Math.round(tdee),
+      floor,
+      capped,
+      isCustom: true,
+    };
+  }
+
   const protein = Math.round(p.weightKg * obj.proteinPerKg);
   const fat = Math.round(p.weightKg * 0.9);
   const carb = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+  // Meta de fibras: recomendação da IOM / Dietary Guidelines (~14g a cada 1000 kcal)
+  const fiber = Math.round((kcal / 1000) * 14);
 
-  return { kcal, carb, protein, fat, tmb: Math.round(tmb), tdee: Math.round(tdee), floor, capped };
+  return {
+    kcal,
+    carb,
+    protein,
+    fat,
+    fiber,
+    tmb: Math.round(tmb),
+    tdee: Math.round(tdee),
+    floor,
+    capped,
+    isCustom: false,
+  };
+}
+
+/**
+ * Alerta de ritmo agressivo: perder mais de 1% do peso corporal por semana
+ * é associado a maior risco de perda de massa magra, rebote e cálculo biliar (ACSM / OMS).
+ */
+export function isAggressivePace(weeklyRateKg: number | undefined, weightKg: number): boolean {
+  if (!weeklyRateKg || weeklyRateKg <= 0 || weightKg <= 0) return false;
+  return weeklyRateKg > weightKg * 0.01 + 0.001;
+}
+
+/** Limite seguro de perda de peso semanal em kg (1% do peso atual). */
+export function safeMaxWeeklyLoss(weightKg: number): number {
+  return Math.round(weightKg * 0.01 * 100) / 100;
+}
+
+/**
+ * Avaliação da OMS para consumo de açúcares livres:
+ * Limite recomendado: máximo 10% do total calórico diário (e idealmente < 5%).
+ * 1 g de açúcar = 4 kcal.
+ */
+export function checkSugarIntake(consumedSugarGrams: number, goalKcal: number): {
+  maxGrams: number;
+  idealMaxGrams: number;
+  pctKcal: number;
+  isOver: boolean;
+  isWarning: boolean;
+  consumedGrams: number;
+} {
+  const sugarKcal = consumedSugarGrams * 4;
+  const pctKcal = goalKcal > 0 ? (sugarKcal / goalKcal) * 100 : 0;
+  const maxGrams = Math.round((goalKcal * 0.1) / 4);
+  const idealMaxGrams = Math.round((goalKcal * 0.05) / 4);
+
+  return {
+    maxGrams,
+    idealMaxGrams,
+    pctKcal: Math.round(pctKcal * 10) / 10,
+    isOver: pctKcal > 10,
+    isWarning: pctKcal > 7.5,
+    consumedGrams: consumedSugarGrams,
+  };
 }
 
 /** Índice de massa corporal. */

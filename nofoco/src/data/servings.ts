@@ -11,7 +11,7 @@ type MeasureRule = {
   keywords: string[];
   /** Se true, a primeira medida desta regra assume prioridade como unidade padrão. */
   preferFirst?: boolean;
-  servings: Array<{ id: string; label: string; grams: number }>;
+  servings: Serving[];
 };
 
 const RULES: MeasureRule[] = [
