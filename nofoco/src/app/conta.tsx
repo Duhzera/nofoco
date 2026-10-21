@@ -72,9 +72,13 @@ export default function ContaScreen() {
   const valid = /\S+@\S+\.\S+/.test(email) && password.length >= 6;
 
   const safeClose = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
+    try {
+      if (Platform.OS === 'web' || !router.canGoBack()) {
+        router.replace('/(tabs)');
+      } else {
+        router.back();
+      }
+    } catch {
       router.replace('/(tabs)');
     }
   };
@@ -188,9 +192,17 @@ export default function ContaScreen() {
         {user ? (
           <>
             <View style={styles.card}>
-              <Text style={styles.loggedLabel}>Você está conectado como</Text>
+              <View style={styles.loggedHeader}>
+                <Ionicons name="checkmark-circle" size={18} color={NoFoco.accent} />
+                <Text style={styles.loggedLabel}>Você está conectado como</Text>
+              </View>
               <Text style={styles.loggedEmail}>{user.email}</Text>
             </View>
+
+            <Pressable style={styles.backToAppBtn} onPress={safeClose}>
+              <Ionicons name="arrow-back-outline" size={18} color={NoFoco.onAccent} />
+              <Text style={styles.backToAppText}>Continuar no aplicativo</Text>
+            </Pressable>
 
             <View style={[styles.card, { marginTop: Spacing.md }]}>
               <View style={styles.syncRow}>
@@ -245,7 +257,13 @@ export default function ContaScreen() {
             {!!info && <Text style={styles.info}>{info}</Text>}
             {!!error && <Text style={styles.error}>{error}</Text>}
 
-            <Pressable style={styles.signOut} onPress={() => signOut()}>
+            <Pressable
+              style={styles.signOut}
+              onPress={async () => {
+                await signOut();
+                setInfo('Você saiu da sua conta.');
+              }}>
+              <Ionicons name="log-out-outline" size={18} color={NoFoco.danger} />
               <Text style={styles.signOutText}>Sair da conta</Text>
             </Pressable>
 
@@ -437,9 +455,22 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
   },
 
+  loggedHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   loggedLabel: { color: NoFoco.soft, fontSize: 12 },
   loggedEmail: { color: NoFoco.ink, fontSize: 16, fontWeight: '700', marginTop: 4 },
   warn: { color: NoFoco.warning, fontSize: 12.5, lineHeight: 18 },
+
+  backToAppBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: NoFoco.accent,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
+    marginTop: Spacing.md,
+  },
+  backToAppText: { color: NoFoco.onAccent, fontSize: 14, fontWeight: '800' },
 
   syncRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   syncStatus: { color: NoFoco.ink, fontSize: 13.5, fontWeight: '600' },
@@ -467,8 +498,15 @@ const styles = StyleSheet.create({
   privacyRowTitle: { color: NoFoco.ink, fontSize: 13.5, fontWeight: '700' },
   privacyRowDesc: { color: NoFoco.soft, fontSize: 11.5, marginTop: 1 },
 
-  signOut: { alignItems: 'center', paddingVertical: Spacing.md, marginTop: Spacing.sm },
-  signOutText: { color: NoFoco.soft, fontSize: 13, fontWeight: '600' },
+  signOut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  signOutText: { color: NoFoco.danger, fontSize: 13.5, fontWeight: '600' },
 
   deleteAccountBtn: {
     flexDirection: 'row',

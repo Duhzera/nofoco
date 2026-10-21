@@ -1,15 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NoFoco, Radius, Spacing } from '@/constants/theme';
 
 export default function PrivacidadeScreen() {
   const safeClose = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
+    try {
+      if (Platform.OS === 'web' || !router.canGoBack()) {
+        router.replace('/(tabs)');
+      } else {
+        router.back();
+      }
+    } catch {
       router.replace('/(tabs)');
     }
   };

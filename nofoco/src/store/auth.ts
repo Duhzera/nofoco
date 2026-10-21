@@ -30,6 +30,26 @@ export const useAuth = create<AuthState>((set) => ({
 if (supabase) {
   supabase.auth.getSession().then(({ data }) => useAuth.getState().setSession(data.session));
   supabase.auth.onAuthStateChange((_event, session) => useAuth.getState().setSession(session));
+
+  // Fallback para Web: caso a URL contenha o hash com tokens OAuth (redirecionamento do Google)
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hash) {
+    const rawHash = window.location.hash.startsWith('#')
+      ? window.location.hash.substring(1)
+      : window.location.hash;
+    const params = new URLSearchParams(rawHash);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (access_token && refresh_token) {
+      supabase.auth.setSession({ access_token, refresh_token }).then(({ data }) => {
+        if (data.session) {
+          useAuth.getState().setSession(data.session);
+          if (window.history?.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }
+      });
+    }
+  }
 } else {
   useAuth.setState({ initializing: false });
 }
@@ -63,16 +83,25 @@ export async function signUp(email: string, password: string): Promise<AuthResul
 export async function signInWithGoogle(): Promise<AuthResult> {
   if (!supabase) return { ok: false, error: 'Backend não configurado.' };
   try {
-    const redirectUrl = Linking.createURL('/conta');
+    const redirectUrl =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/conta`
+        : Linking.createURL('/conta');
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: redirectUrl,
-        skipBrowserRedirect: Platform.OS !== 'web',
+        skipBrowserRedirect: true,
       },
     });
 
     if (error) return { ok: false, error: friendly(error.message) };
+
+    if (Platform.OS === 'web' && data?.url) {
+      window.location.assign(data.url);
+      return { ok: true };
+    }
 
     if (Platform.OS !== 'web' && data?.url) {
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
@@ -95,6 +124,7 @@ export async function signInWithGoogle(): Promise<AuthResult> {
 
 export async function signOut(): Promise<void> {
   await supabase?.auth.signOut();
+  useAuth.getState().setSession(null);
 }
 
 /** Exclusão Definitiva de Conta e Dados (Direito ao esquecimento da LGPD / Google Play). */
