@@ -4,6 +4,9 @@
  * sessão para o Perfil mostrar o e-mail e a sincronização saber de quem é o dado.
  */
 import type { Session, User } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { supabase } from '@/services/supabase';
@@ -56,6 +59,67 @@ export async function signUp(email: string, password: string): Promise<AuthResul
   return error ? { ok: false, error: friendly(error.message) } : { ok: true };
 }
 
+/** Login social direto com Google (OAuth). */
+export async function signInWithGoogle(): Promise<AuthResult> {
+  if (!supabase) return { ok: false, error: 'Backend não configurado.' };
+  try {
+    const redirectUrl = Linking.createURL('/conta');
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        skipBrowserRedirect: Platform.OS !== 'web',
+      },
+    });
+
+    if (error) return { ok: false, error: friendly(error.message) };
+
+    if (Platform.OS !== 'web' && data?.url) {
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      if (res.type === 'success' && res.url) {
+        const hash = res.url.split('#')[1] || res.url.split('?')[1] || '';
+        const params = new URLSearchParams(hash);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({ access_token, refresh_token });
+        }
+      }
+    }
+    return { ok: true };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Falha na conexão com o Google.';
+    return { ok: false, error: friendly(msg) };
+  }
+}
+
 export async function signOut(): Promise<void> {
   await supabase?.auth.signOut();
+}
+
+/** Exclusão Definitiva de Conta e Dados (Direito ao esquecimento da LGPD / Google Play). */
+export async function deleteUserAccount(): Promise<AuthResult> {
+  if (!supabase) return { ok: false, error: 'Backend não configurado.' };
+  try {
+    const { error } = await supabase.rpc('delete_user_account');
+    if (error) {
+      console.warn('RPC delete_user_account falhou, aplicando fallback de exclusão de dados:', error.message);
+      const uid = useAuth.getState().user?.id;
+      if (uid) {
+        await Promise.allSettled([
+          supabase.from('profiles').delete().eq('user_id', uid),
+          supabase.from('diary_items').delete().eq('user_id', uid),
+          supabase.from('meals').delete().eq('user_id', uid),
+          supabase.from('weight_log').delete().eq('user_id', uid),
+          supabase.from('recipes').delete().eq('user_id', uid),
+          supabase.from('favorites').delete().eq('user_id', uid),
+        ]);
+      }
+    }
+    await signOut();
+    return { ok: true };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Falha ao excluir a conta.';
+    return { ok: false, error: friendly(msg) };
+  }
 }

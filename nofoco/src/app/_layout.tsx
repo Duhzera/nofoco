@@ -63,6 +63,10 @@ export default function RootLayout() {
             name="receita-criar"
             options={{ presentation: 'modal', title: 'Criar Receita' }}
           />
+          <Stack.Screen
+            name="privacidade"
+            options={{ presentation: 'modal', title: 'Privacidade' }}
+          />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

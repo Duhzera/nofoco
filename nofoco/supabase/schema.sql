@@ -107,3 +107,34 @@ begin
          with check (auth.uid() = user_id)', t, t);
   end loop;
 end $$;
+
+-- ────────────────────── DIREITO AO ESQUECIMENTO (LGPD) ─────────────────────
+-- Permite que o usuário autenticado exclua a própria conta e todos os seus dados.
+create or replace function public.delete_user_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'Usuário não autenticado.';
+  end if;
+
+  -- 1. Apaga dados nas tabelas da aplicação
+  delete from public.profiles where user_id = uid;
+  delete from public.meals where user_id = uid;
+  delete from public.weight_log where user_id = uid;
+  delete from public.diary_items where user_id = uid;
+  delete from public.recipes where user_id = uid;
+  delete from public.favorites where user_id = uid;
+
+  -- 2. Apaga o registro de autenticação
+  delete from auth.users where id = uid;
+end;
+$$;
+
+revoke all on function public.delete_user_account() from public;
+grant execute on function public.delete_user_account() to authenticated;

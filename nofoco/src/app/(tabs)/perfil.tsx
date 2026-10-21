@@ -504,6 +504,12 @@ export default function PerfilScreen() {
           Estimativas informativas (Mifflin-St Jeor). Não substituem acompanhamento de nutricionista ou médico.
         </Text>
       </View>
+
+      <Pressable style={styles.privacyBtn} onPress={() => router.push('/privacidade')}>
+        <Ionicons name="shield-checkmark-outline" size={15} color={NoFoco.soft} />
+        <Text style={styles.privacyBtnText}>Privacidade, Termos de Uso & Direitos LGPD</Text>
+        <Ionicons name="chevron-forward" size={14} color={NoFoco.soft} />
+      </Pressable>
     </Screen>
   );
 }
@@ -763,4 +769,17 @@ const styles = StyleSheet.create({
 
   disclaimer: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg, backgroundColor: NoFoco.surface, borderRadius: Radius.md, padding: Spacing.md },
   disclaimerText: { flex: 1, color: NoFoco.soft, fontSize: 11, lineHeight: 16 },
+  privacyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: NoFoco.surface,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: NoFoco.hair,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xl,
+  },
+  privacyBtnText: { flex: 1, color: NoFoco.soft, fontSize: 12, fontWeight: '600' },
 });
