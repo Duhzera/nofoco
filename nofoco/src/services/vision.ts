@@ -2,7 +2,7 @@
  * Foto com IA (E5): manda a foto do prato para análise e recebe os alimentos estimados.
  *
  * Modo produção: chama a Edge Function `analisar-foto` no Supabase (chave oculta no servidor).
- * Modo direto/desenvolvimento: se `EXPO_PUBLIC_GEMINI_API_KEY` estiver configurada, chama a API do Gemini.
+ * Modo direto/desenvolvimento: se `EXPO_PUBLIC_GEMINI_API_KEY` estiver configurada, chama a API do Gemini diretamente.
  */
 import { rememberFood, type Food, type Nutrients } from '@/data/foods';
 import { supabase } from '@/services/supabase';
@@ -22,7 +22,7 @@ export type VisionResult =
 type RawItem = {
   name: string;
   grams: number;
-  confidence: 'alta' | 'media' | 'baixa';
+  confidence: 'alta' | 'media' | 'baixa' | number;
   per100: Partial<Nutrients> & { kcal: number; carb: number; protein: number; fat: number };
 };
 
@@ -60,9 +60,9 @@ Regras:
 2. Estime o peso da porção em gramas com base em referências visuais (tamanho relativo ao prato, talheres, copo, mão).
 3. Os valores nutricionais em "per100" são SEMPRE por 100 g do alimento (base TACO/IBGE), e NÃO da porção inteira.
 4. "confidence" deve ser "alta", "media" ou "baixa".
-5. Se a foto NÃO for de comida ou refeição, retorne a lista "items" vazia e preencha "aviso" com uma mensagem amigável explicando o motivo.`;
+5. Se a foto NÃO for de comida ou refeição, retorne a lista vazia e preencha "aviso" com uma mensagem amigável explicando o motivo.`;
 
-/** Chamada direta ao Google Gemini (ideal para testes locais e desenvolvimento). */
+/** Chamada direta ao Google Gemini (ideal para testes locais e desenvolvimento rápido). */
 async function analisarComGeminiDireto(base64: string, mediaType: string, apiKey: string): Promise<VisionResult> {
   const cleanBase64 = base64.replace(/^data:image\/[a-z]+;base64,/, '');
   const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
@@ -76,7 +76,7 @@ async function analisarComGeminiDireto(base64: string, mediaType: string, apiKey
           {
             parts: [
               { inline_data: { mime_type: mediaType, data: cleanBase64 } },
-              { text: 'Identifique os alimentos deste prato, estimando a porção em gramas e os nutrientes por 100g.' },
+              { text: 'Identifique os alimentos deste prato, estimando o peso da porção em gramas e a composição nutricional por 100g.' },
             ],
           },
         ],
@@ -127,11 +127,17 @@ async function analisarComGeminiDireto(base64: string, mediaType: string, apiKey
         const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (rawText) {
           const parsed = JSON.parse(rawText);
-          const rawItems: RawItem[] = Array.isArray(parsed.items) ? parsed.items : [];
+          // Suporta tanto `{ items: [...] }` quanto array direto `[...]`
+          const rawItems: RawItem[] = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed.items)
+            ? parsed.items
+            : [];
+
           const items = rawItems
             .filter((r) => r?.name && Number.isFinite(r.grams) && r.grams > 0)
             .map((r) => {
-              let conf: 'alta' | 'media' | 'baixa' = 'media';
+              let conf: 'alta' | 'media' | 'baixa' = 'alta';
               if (r.confidence === 'alta' || r.confidence === 'media' || r.confidence === 'baixa') {
                 conf = r.confidence;
               } else if (typeof r.confidence === 'number') {
@@ -146,8 +152,8 @@ async function analisarComGeminiDireto(base64: string, mediaType: string, apiKey
           return { kind: 'ok', items, aviso: parsed.aviso };
         }
       }
-    } catch {
-      // tenta próximo modelo
+    } catch (e) {
+      console.warn(`Tentativa com ${model} falhou:`, e);
     }
   }
 
@@ -157,7 +163,15 @@ async function analisarComGeminiDireto(base64: string, mediaType: string, apiKey
 export async function analisarFoto(base64: string, mediaType = 'image/jpeg'): Promise<VisionResult> {
   const directKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-  // 1. Tenta via Edge Function do Supabase (padrão seguro de produção)
+  // 1. Em desenvolvimento ou se a chave direta estiver presente, usa Gemini direto com máxima velocidade
+  if (directKey) {
+    const res = await analisarComGeminiDireto(base64, mediaType, directKey);
+    if (res.kind === 'ok' || res.kind === 'sem-comida') {
+      return res;
+    }
+  }
+
+  // 2. Tenta via Edge Function do Supabase (quando publicada no servidor)
   if (supabase) {
     try {
       const { data, error } = await supabase.functions.invoke('analisar-foto', {
@@ -165,10 +179,15 @@ export async function analisarFoto(base64: string, mediaType = 'image/jpeg'): Pr
       });
 
       if (!error && data && !data.error) {
-        const raw: RawItem[] = Array.isArray(data.items) ? data.items : [];
-        const items = raw
+        const rawItems: RawItem[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data.items)
+          ? data.items
+          : [];
+
+        const items = rawItems
           .filter((r) => r?.name && Number.isFinite(r.grams) && r.grams > 0)
-          .map((r) => ({ food: toFood(r), grams: Math.round(r.grams), confidence: r.confidence ?? 'baixa' }));
+          .map((r) => ({ food: toFood(r), grams: Math.round(r.grams), confidence: (r.confidence as 'alta') ?? 'alta' }));
 
         if (items.length === 0) {
           return { kind: 'sem-comida', aviso: data.aviso ?? 'Não identifiquei comida nesta foto.' };
@@ -176,13 +195,8 @@ export async function analisarFoto(base64: string, mediaType = 'image/jpeg'): Pr
         return { kind: 'ok', items, aviso: data.aviso };
       }
     } catch {
-      // Fallback para chave direta em desenvolvimento se a edge function ainda não foi publicada
+      // continua para erro
     }
-  }
-
-  // 2. Se a Edge Function não estiver publicada, mas houver chave direta configurada
-  if (directKey) {
-    return analisarComGeminiDireto(base64, mediaType, directKey);
   }
 
   return { kind: 'erro', message: 'Serviço de IA não configurado no Supabase.' };
