@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NoFoco } from '@/constants/theme';
 import { useProfile } from '@/store/profile';
 import '@/store/sync'; // ativa a sincronização (escuta login + auto-push)
+import '@/store/custom-foods'; // ativa a persistência dos alimentos personalizados
 
 SplashScreen.preventAutoHideAsync();
 
@@ -70,6 +71,10 @@ export default function RootLayout() {
           <Stack.Screen
             name="premium"
             options={{ presentation: 'modal', title: 'NoFoco PRO' }}
+          />
+          <Stack.Screen
+            name="tabela-foto"
+            options={{ presentation: 'modal', title: 'Ler Tabela Nutricional' }}
           />
         </Stack>
       </ThemeProvider>

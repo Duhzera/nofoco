@@ -1,17 +1,9 @@
 /**
- * Edge Function: estima os alimentos de uma foto de prato usando Google Gemini Vision (ou Anthropic Claude).
- *
- * Roda no servidor (Supabase) para que a chave de API da IA NUNCA fique exposta no app mobile.
- *
- * Como configurar no Supabase:
- * 1. Obtenha sua chave gratuita do Gemini em: https://aistudio.google.com/
- * 2. Configure o segredo no Supabase:
- *    npx supabase secrets set GEMINI_API_KEY=AQ...
- * 3. Faça o deploy da função:
- *    npx supabase functions deploy analisar-foto
+ * Edge Function: analisa foto de prato (estimativa) OU foto de tabela nutricional (leitura de rótulo).
+ * Roda no servidor (Supabase) para manter a chave da IA segura.
  */
 
-const SYSTEM_PROMPT = `Você é um nutricionista especialista em culinária brasileira e na Tabela Brasileira de Composição de Alimentos (TACO).
+const SYSTEM_PROMPT_PRATO = `Você é um nutricionista especialista em culinária brasileira e na Tabela Brasileira de Composição de Alimentos (TACO).
 Você analisa fotos de comida e estima os alimentos presentes no prato.
 
 Regras:
@@ -20,6 +12,18 @@ Regras:
 3. Os valores nutricionais em "per100" são SEMPRE por 100 g do alimento (base TACO/IBGE), e NÃO da porção inteira.
 4. "confidence" deve ser "alta", "media" ou "baixa".
 5. Se a foto NÃO for de comida ou refeição, retorne a lista "items" vazia e preencha "aviso" com uma mensagem amigável explicando o motivo.`;
+
+const SYSTEM_PROMPT_TABELA = `Você é um nutricionista especialista em leitura de rótulos e tabelas de informação nutricional brasileiras (padrão ANVISA e internacional).
+Analise a imagem da embalagem ou da tabela nutricional e extraia com precisão os dados.
+
+Regras fundamentais:
+1. "name": Nome do produto alimentício visível.
+2. "brand": Nome da marca se visível.
+3. "servingGrams": Peso da porção de referência em gramas (ou ml) descrita na tabela (ex: 30g). Se não achar, use 100.
+4. "servingLabel": Descrição da porção descrita na embalagem (ex: "2 biscoitos (30g)").
+5. "liquid": true se for bebida/líquido.
+6. "per100": Valores normalizados para 100g (ou 100ml). Se o rótulo só tiver dados por porção, calcule a regra de três para 100g: (valor / porção) * 100.
+7. Se não for rótulo ou tabela nutricional, preencha "aviso".`;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -46,15 +50,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { image, mediaType = 'image/jpeg' } = await req.json();
+    const { image, mediaType = 'image/jpeg', type = 'prato' } = await req.json();
     if (!image) return json({ error: 'Envie a imagem em base64 no campo "image".' }, 400);
 
-    // Limpa prefixos data:image/...;base64, se houver
     const cleanBase64 = image.replace(/^data:image\/[a-z]+;base64,/, '');
+    const isTabela = type === 'tabela' || type === 'label';
 
-    // ─────────────────────────────────────────────────────────────
-    // 1. Google Gemini (Gemini 3.5 Flash-Lite / Gemini 3.8 Flash)
-    // ─────────────────────────────────────────────────────────────
     if (geminiKey) {
       const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
       let lastError = '';
@@ -62,60 +63,93 @@ Deno.serve(async (req) => {
       for (const model of models) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
 
-        const geminiBody = {
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          contents: [
-            {
-              parts: [
+        const geminiBody = isTabela
+          ? {
+              system_instruction: { parts: [{ text: SYSTEM_PROMPT_TABELA }] },
+              contents: [
                 {
-                  inline_data: {
-                    mime_type: mediaType,
-                    data: cleanBase64,
-                  },
-                },
-                {
-                  text: 'Identifique os alimentos deste prato, estimando a porção em gramas e os nutrientes por 100g.',
+                  parts: [
+                    { inline_data: { mime_type: mediaType, data: cleanBase64 } },
+                    { text: 'Extraia os dados da tabela nutricional e do produto normalizados por 100g.' },
+                  ],
                 },
               ],
-            },
-          ],
-          generationConfig: {
-            response_mime_type: 'application/json',
-            response_schema: {
-              type: 'OBJECT',
-              required: ['items'],
-              properties: {
-                items: {
-                  type: 'ARRAY',
-                  items: {
-                    type: 'OBJECT',
-                    required: ['name', 'grams', 'confidence', 'per100'],
-                    properties: {
-                      name: { type: 'STRING', description: 'Nome do alimento em português' },
-                      grams: { type: 'NUMBER', description: 'Peso estimado da porção em gramas' },
-                      confidence: { type: 'STRING', enum: ['alta', 'media', 'baixa'] },
-                      per100: {
+              generationConfig: {
+                response_mime_type: 'application/json',
+                response_schema: {
+                  type: 'OBJECT',
+                  required: ['servingGrams', 'per100'],
+                  properties: {
+                    name: { type: 'STRING' },
+                    brand: { type: 'STRING' },
+                    servingGrams: { type: 'NUMBER' },
+                    servingLabel: { type: 'STRING' },
+                    liquid: { type: 'BOOLEAN' },
+                    per100: {
+                      type: 'OBJECT',
+                      required: ['kcal', 'carb', 'protein', 'fat'],
+                      properties: {
+                        kcal: { type: 'NUMBER' },
+                        carb: { type: 'NUMBER' },
+                        protein: { type: 'NUMBER' },
+                        fat: { type: 'NUMBER' },
+                        fiber: { type: 'NUMBER' },
+                        sodium: { type: 'NUMBER' },
+                        sugar: { type: 'NUMBER' },
+                        satFat: { type: 'NUMBER' },
+                        transFat: { type: 'NUMBER' },
+                      },
+                    },
+                    aviso: { type: 'STRING' },
+                  },
+                },
+              },
+            }
+          : {
+              system_instruction: { parts: [{ text: SYSTEM_PROMPT_PRATO }] },
+              contents: [
+                {
+                  parts: [
+                    { inline_data: { mime_type: mediaType, data: cleanBase64 } },
+                    { text: 'Identifique os alimentos deste prato, estimando a porção em gramas e os nutrientes por 100g.' },
+                  ],
+                },
+              ],
+              generationConfig: {
+                response_mime_type: 'application/json',
+                response_schema: {
+                  type: 'OBJECT',
+                  required: ['items'],
+                  properties: {
+                    items: {
+                      type: 'ARRAY',
+                      items: {
                         type: 'OBJECT',
-                        required: ['kcal', 'carb', 'protein', 'fat'],
+                        required: ['name', 'grams', 'confidence', 'per100'],
                         properties: {
-                          kcal: { type: 'NUMBER' },
-                          carb: { type: 'NUMBER' },
-                          protein: { type: 'NUMBER' },
-                          fat: { type: 'NUMBER' },
-                          fiber: { type: 'NUMBER' },
-                          sodium: { type: 'NUMBER', description: 'Sódio em mg por 100g' },
+                          name: { type: 'STRING' },
+                          grams: { type: 'NUMBER' },
+                          confidence: { type: 'STRING', enum: ['alta', 'media', 'baixa'] },
+                          per100: {
+                            type: 'OBJECT',
+                            required: ['kcal', 'carb', 'protein', 'fat'],
+                            properties: {
+                              kcal: { type: 'NUMBER' },
+                              carb: { type: 'NUMBER' },
+                              protein: { type: 'NUMBER' },
+                              fat: { type: 'NUMBER' },
+                              fiber: { type: 'NUMBER' },
+                              sodium: { type: 'NUMBER' },
+                            },
+                          },
                         },
                       },
                     },
+                    aviso: { type: 'STRING' },
                   },
                 },
-                aviso: { type: 'STRING', description: 'Mensagem explicativa se a foto não for comida' },
               },
-            },
-          },
-        };
+            };
 
         const res = await fetch(url, {
           method: 'POST',
@@ -127,55 +161,23 @@ Deno.serve(async (req) => {
           const data = await res.json();
           const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (rawText) {
-            const parsed = JSON.parse(rawText);
-            // Garante normalização de confidence se vier número
-            if (Array.isArray(parsed.items)) {
-              for (const it of parsed.items) {
-                if (typeof it.confidence === 'number') {
-                  it.confidence = it.confidence >= 0.8 ? 'alta' : it.confidence >= 0.5 ? 'media' : 'baixa';
-                }
-              }
+            try {
+              return json(JSON.parse(rawText));
+            } catch {
+              return json({ error: 'Resposta da IA não veio em JSON válido.', raw: rawText }, 500);
             }
-            return json(parsed);
           }
         } else {
           lastError = await res.text();
-          console.warn(`Tentativa com ${model} falhou:`, lastError);
         }
       }
 
-      return json({ error: `Falha na API do Gemini: ${lastError}` }, 502);
+      return json({ error: 'Todos os modelos Gemini falharam.', details: lastError }, 502);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 2. Fallback: Anthropic Claude
-    // ─────────────────────────────────────────────────────────────
-    const { default: Anthropic } = await import('npm:@anthropic-ai/sdk@0.72.0');
-    const client = new Anthropic({ apiKey: anthropicKey });
-    const response = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType as 'image/jpeg', data: cleanBase64 },
-            },
-            { type: 'text', text: 'Que alimentos estão neste prato? Estime peso e nutrição em JSON.' },
-          ],
-        },
-      ],
-    });
-
-    const block = response.content.find((b) => b.type === 'text');
-    if (!block || block.type !== 'text') return json({ error: 'Resposta vazia do modelo.' }, 502);
-    return json(JSON.parse(block.text));
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Falha desconhecida';
-    console.error('analisar-foto error:', message);
-    return json({ error: `Falha ao analisar a foto: ${message}` }, 500);
+    return json({ error: 'Nenhum provedor de IA disponível.' }, 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return json({ error: 'Falha interna ao processar imagem.', details: message }, 500);
   }
 });

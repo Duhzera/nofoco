@@ -29,6 +29,12 @@ export default function PesquisarScreen() {
       params: { id: f.id, ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
     });
 
+  const openTabelaFoto = () =>
+    router.push({
+      pathname: '/tabela-foto' as any,
+      params: { ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
+    });
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
@@ -70,7 +76,36 @@ export default function PesquisarScreen() {
         keyExtractor={(f) => f.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Nenhum alimento encontrado.</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Text style={styles.empty}>
+              {query.trim().length > 0
+                ? `Nenhum alimento encontrado para "${query}".`
+                : 'Nenhum alimento encontrado.'}
+            </Text>
+            <Pressable style={styles.emptyCta} onPress={openTabelaFoto}>
+              <Ionicons name="camera-outline" size={18} color={NoFoco.onAccent} />
+              <Text style={styles.emptyCtaText}>Fotografar Tabela Nutricional</Text>
+            </Pressable>
+            <Text style={styles.emptySub}>
+              Tire uma foto da tabela no rótulo para a IA cadastrar automaticamente.
+            </Text>
+          </View>
+        }
+        ListFooterComponent={
+          results.length > 0 && query.trim().length > 1 ? (
+            <Pressable style={styles.footerCta} onPress={openTabelaFoto}>
+              <View style={styles.footerCtaIcon}>
+                <Ionicons name="document-text-outline" size={18} color={NoFoco.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.footerCtaTitle}>Não encontrou a marca certa?</Text>
+                <Text style={styles.footerCtaSub}>Fotografe a tabela nutricional do rótulo</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={NoFoco.soft} />
+            </Pressable>
+          ) : null
+        }
         renderItem={({ item }) => (
           <Pressable style={styles.res} onPress={() => openFood(item)}>
             <View style={styles.resIcon}>
@@ -122,7 +157,46 @@ const styles = StyleSheet.create({
   chipText: { color: NoFoco.soft, fontSize: 11.5, fontWeight: '700' },
   chipTextOn: { color: NoFoco.onAccent },
   list: { paddingBottom: Spacing.xxl },
-  empty: { color: NoFoco.soft, textAlign: 'center', marginTop: Spacing.xxl, fontSize: 13 },
+  empty: { color: NoFoco.soft, textAlign: 'center', fontSize: 13 },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: NoFoco.accent,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 12,
+    borderRadius: Radius.pill,
+    marginTop: Spacing.md,
+  },
+  emptyCtaText: { color: NoFoco.onAccent, fontSize: 13, fontWeight: '700' },
+  emptySub: { color: NoFoco.soft, fontSize: 11.5, textAlign: 'center', maxWidth: 260 },
+  footerCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: NoFoco.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: NoFoco.hair,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.lg,
+  },
+  footerCtaIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.sm,
+    backgroundColor: NoFoco.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerCtaTitle: { color: NoFoco.ink, fontSize: 13, fontWeight: '700' },
+  footerCtaSub: { color: NoFoco.soft, fontSize: 11, marginTop: 2 },
   res: {
     flexDirection: 'row',
     alignItems: 'center',

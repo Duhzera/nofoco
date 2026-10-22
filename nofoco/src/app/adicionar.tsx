@@ -16,7 +16,8 @@ type Mode = {
 const MODES: Mode[] = [
   { icon: 'search-outline', title: 'Pesquisar', desc: 'Busque por nome, ex.: pão de queijo', route: '/pesquisar' },
   { icon: 'barcode-outline', title: 'Escanear', desc: 'Leia o código de barras do produto', route: '/escanear' },
-  { icon: 'camera-outline', title: 'Foto (IA)', desc: 'Fotografe o prato e estime os macros', route: '/foto' },
+  { icon: 'camera-outline', title: 'Foto do Prato (IA)', desc: 'Fotografe o prato e estime os macros', route: '/foto' },
+  { icon: 'document-text-outline', title: 'Foto da Tabela (IA)', desc: 'Fotografe a tabela nutricional do rótulo', route: '/tabela-foto' },
 ];
 
 export default function AdicionarModal() {
@@ -26,7 +27,7 @@ export default function AdicionarModal() {
 
   const open = (route: string) =>
     router.push({
-      pathname: route as '/pesquisar' | '/escanear' | '/foto',
+      pathname: route as any,
       params: { ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
     });
 

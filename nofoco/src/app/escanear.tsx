@@ -2,8 +2,8 @@
  * Leitor de código de barras. Abre a câmera, lê o código de qualquer produto e
  * resolve em um alimento via services/products (cache Supabase → Open Food Facts).
  *
- * Achou → vai para a porção (com meal/voltarPara). Não achou → oferece busca manual.
- * No web não há câmera de verdade no preview, então cai no modo "digitar código".
+ * Achou → vai para a porção (com meal/voltarPara).
+ * Não achou → oferece fotografar a tabela nutricional (IA) ou busca manual.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -46,6 +46,16 @@ export default function EscanearScreen() {
     router.replace({
       pathname: '/pesquisar',
       params: { ...(meal ? { meal } : {}), ...(voltarPara ? { voltarPara } : {}) },
+    });
+
+  const goToLabelScan = () =>
+    router.replace({
+      pathname: '/tabela-foto' as any,
+      params: {
+        barcode: lastCode || code,
+        ...(meal ? { meal } : {}),
+        ...(voltarPara ? { voltarPara } : {}),
+      },
     });
 
   const resolve = async (raw: string) => {
@@ -99,18 +109,32 @@ export default function EscanearScreen() {
           />
           {status === 'looking' && <ActivityIndicator color={NoFoco.accent} style={{ marginTop: Spacing.md }} />}
           {status === 'notfound' && (
-            <Text style={styles.notfoundInline}>Nada encontrado para {lastCode}. Confira os números.</Text>
+            <View style={{ alignItems: 'center', marginTop: Spacing.md, gap: Spacing.sm, width: '100%' }}>
+              <Text style={styles.notfoundInline}>Nada encontrado para {lastCode}.</Text>
+              <Pressable style={styles.cta} onPress={goToLabelScan}>
+                <Ionicons name="camera-outline" size={18} color={NoFoco.onAccent} />
+                <Text style={styles.ctaText}>Fotografar Tabela Nutricional</Text>
+              </Pressable>
+            </View>
           )}
-          <Pressable
-            style={[styles.cta, code.replace(/\D/g, '').length < 6 && styles.ctaOff]}
-            disabled={code.replace(/\D/g, '').length < 6 || status === 'looking'}
-            onPress={submitManual}>
-            <Text style={styles.ctaText}>Buscar produto</Text>
+          {status !== 'notfound' && (
+            <Pressable
+              style={[styles.cta, code.replace(/\D/g, '').length < 6 && styles.ctaOff]}
+              disabled={code.replace(/\D/g, '').length < 6 || status === 'looking'}
+              onPress={submitManual}>
+              <Text style={styles.ctaText}>Buscar produto</Text>
+            </Pressable>
+          )}
+
+          <Pressable onPress={goToLabelScan} style={styles.switchMode}>
+            <Ionicons name="nutrition-outline" size={16} color={NoFoco.accent} />
+            <Text style={styles.switchModeText}>Cadastrar por foto da tabela</Text>
           </Pressable>
+
           {Platform.OS !== 'web' && (
             <Pressable onPress={() => { setManual(false); scanAgain(); }} style={styles.switchMode}>
               <Ionicons name="barcode-outline" size={16} color={NoFoco.accent} />
-              <Text style={styles.switchModeText}>Usar a câmera</Text>
+              <Text style={styles.switchModeText}>Usar leitor de câmera</Text>
             </Pressable>
           )}
         </View>
@@ -129,7 +153,7 @@ export default function EscanearScreen() {
           </View>
           <Text style={styles.manualTitle}>Permitir a câmera</Text>
           <Text style={styles.manualHint}>
-            O NoFoco usa a câmera só para ler o código de barras dos produtos.
+            O NoFoco usa a câmera para ler o código de barras e fotografar tabelas nutricionais.
           </Text>
           <Pressable style={styles.cta} onPress={requestPermission}>
             <Text style={styles.ctaText}>Permitir câmera</Text>
@@ -161,7 +185,7 @@ export default function EscanearScreen() {
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.round}>
             <Ionicons name="close" size={22} color="#fff" />
           </Pressable>
-          <Text style={styles.camTitle}>Escanear</Text>
+          <Text style={styles.camTitle}>Escanear Código</Text>
           <Pressable onPress={() => setTorch((t) => !t)} hitSlop={10} style={[styles.round, torch && styles.roundOn]}>
             <Ionicons name={torch ? 'flash' : 'flash-outline'} size={20} color={torch ? NoFoco.onAccent : '#fff'} />
           </Pressable>
@@ -177,15 +201,22 @@ export default function EscanearScreen() {
             <View style={styles.notfoundCard}>
               <Text style={styles.notfoundTitle}>Produto não encontrado</Text>
               <Text style={styles.notfoundText}>
-                O código {lastCode} não está no Open Food Facts ainda.
+                O código {lastCode} ainda não está catalogado. Fotografe a tabela nutricional do rótulo para cadastrar na hora!
               </Text>
               <View style={styles.notfoundActions}>
-                <Pressable style={[styles.smallBtn, styles.smallBtnPrimary]} onPress={scanAgain}>
-                  <Text style={styles.smallBtnPrimaryText}>Escanear de novo</Text>
+                <Pressable style={styles.actionBtnPrimary} onPress={goToLabelScan}>
+                  <Ionicons name="camera-outline" size={17} color={NoFoco.onAccent} />
+                  <Text style={styles.actionBtnPrimaryText}>Fotografar Tabela Nutricional</Text>
                 </Pressable>
-                <Pressable style={styles.smallBtn} onPress={goToSearch}>
-                  <Text style={styles.smallBtnText}>Buscar por nome</Text>
-                </Pressable>
+
+                <View style={styles.secondaryRow}>
+                  <Pressable style={styles.smallBtn} onPress={scanAgain}>
+                    <Text style={styles.smallBtnText}>Escanear outro</Text>
+                  </Pressable>
+                  <Pressable style={styles.smallBtn} onPress={goToSearch}>
+                    <Text style={styles.smallBtnText}>Buscar por nome</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           ) : (
@@ -201,10 +232,17 @@ export default function EscanearScreen() {
           )}
         </View>
 
-        <Pressable onPress={() => setManual(true)} style={styles.manualLink}>
-          <Ionicons name="keypad-outline" size={16} color="#fff" />
-          <Text style={styles.manualLinkText}>Digitar código manualmente</Text>
-        </Pressable>
+        <View style={styles.bottomLinks}>
+          <Pressable onPress={() => setManual(true)} style={styles.manualLink}>
+            <Ionicons name="keypad-outline" size={16} color="#fff" />
+            <Text style={styles.manualLinkText}>Digitar código</Text>
+          </Pressable>
+          <Text style={{ color: 'rgba(255,255,255,0.4)' }}>•</Text>
+          <Pressable onPress={goToLabelScan} style={styles.manualLink}>
+            <Ionicons name="nutrition-outline" size={16} color="#fff" />
+            <Text style={styles.manualLinkText}>Foto da tabela</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -228,7 +266,7 @@ const styles = StyleSheet.create({
   close: { width: 34, height: 34, borderRadius: Radius.md, backgroundColor: NoFoco.surface2, alignItems: 'center', justifyContent: 'center' },
 
   // manual / permissão
-  manualBody: { flex: 1, alignItems: 'center', paddingTop: 60, gap: Spacing.md },
+  manualBody: { flex: 1, alignItems: 'center', paddingTop: 40, gap: Spacing.md },
   manualIcon: {
     width: 72, height: 72, borderRadius: Radius.pill, backgroundColor: NoFoco.surface,
     borderWidth: StyleSheet.hairlineWidth, borderColor: NoFoco.hair, alignItems: 'center', justifyContent: 'center',
@@ -242,10 +280,13 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   notfoundInline: { color: NoFoco.warning, fontSize: 12.5, textAlign: 'center', marginTop: Spacing.sm },
-  cta: { width: '100%', backgroundColor: NoFoco.accent, borderRadius: Radius.md, paddingVertical: 15, alignItems: 'center', marginTop: Spacing.md },
+  cta: {
+    width: '100%', backgroundColor: NoFoco.accent, borderRadius: Radius.md, paddingVertical: 14,
+    alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md,
+  },
   ctaOff: { opacity: 0.4 },
-  ctaText: { color: NoFoco.onAccent, fontSize: 15, fontWeight: '800' },
-  switchMode: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: Spacing.md },
+  ctaText: { color: NoFoco.onAccent, fontSize: 14.5, fontWeight: '800' },
+  switchMode: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: Spacing.sm },
   switchModeText: { color: NoFoco.accent, fontSize: 13, fontWeight: '700' },
 
   // câmera
@@ -265,14 +306,34 @@ const styles = StyleSheet.create({
   frameHint: { color: '#fff', fontSize: 13, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 },
   looking: { alignItems: 'center', gap: Spacing.md },
   lookingText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  notfoundCard: { backgroundColor: NoFoco.surface, borderRadius: Radius.lg, padding: Spacing.lg, width: '100%', maxWidth: 320 },
+
+  notfoundCard: { backgroundColor: NoFoco.surface, borderRadius: Radius.lg, padding: Spacing.lg, width: '100%', maxWidth: 340 },
   notfoundTitle: { color: NoFoco.ink, fontSize: 16, fontWeight: '800' },
   notfoundText: { color: NoFoco.soft, fontSize: 12.5, lineHeight: 18, marginTop: Spacing.sm, fontVariant: ['tabular-nums'] },
-  notfoundActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
-  smallBtn: { flex: 1, borderRadius: Radius.md, paddingVertical: 12, alignItems: 'center', backgroundColor: NoFoco.surface2 },
-  smallBtnText: { color: NoFoco.ink, fontSize: 12.5, fontWeight: '700' },
-  smallBtnPrimary: { backgroundColor: NoFoco.accent },
-  smallBtnPrimaryText: { color: NoFoco.onAccent, fontSize: 12.5, fontWeight: '800' },
-  manualLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.md, alignSelf: 'center' },
+  notfoundActions: { gap: Spacing.sm, marginTop: Spacing.md },
+
+  actionBtnPrimary: {
+    backgroundColor: NoFoco.accent,
+    borderRadius: Radius.md,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  actionBtnPrimaryText: { color: NoFoco.onAccent, fontSize: 13.5, fontWeight: '800' },
+  secondaryRow: { flexDirection: 'row', gap: Spacing.sm },
+
+  smallBtn: { flex: 1, borderRadius: Radius.md, paddingVertical: 10, alignItems: 'center', backgroundColor: NoFoco.surface2 },
+  smallBtnText: { color: NoFoco.ink, fontSize: 12, fontWeight: '700' },
+
+  bottomLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+  },
+  manualLink: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   manualLinkText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
