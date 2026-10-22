@@ -62,6 +62,7 @@ export function labelToFood(data: ScannedLabelData, barcode?: string): Food {
     },
     unitGrams,
     unitLabel,
+    barcode: barcode ? barcode.trim() : undefined,
   };
 }
 

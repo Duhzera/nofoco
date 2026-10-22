@@ -57,6 +57,7 @@ export type Food = {
   per100: Nutrients; // por 100 g (ou 100 ml se liquid)
   unitGrams: number; // peso de 1 "unidade"/porção padrão
   unitLabel: string; // ex.: 'unidade média', 'copo', 'fatia'
+  barcode?: string; // código de barras (EAN-13, UPC, etc.) se houver
   extraServings?: Serving[]; // medidas caseiras adicionais
 };
 

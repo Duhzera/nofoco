@@ -46,6 +46,7 @@ export default function TabelaFotoScreen() {
   const [erro, setErro] = useState<string | null>(null);
 
   // Campos editáveis do alimento extraído
+  const [barcodeInput, setBarcodeInput] = useState(barcode || '');
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [servingGrams, setServingGrams] = useState('100');
@@ -146,20 +147,21 @@ export default function TabelaFotoScreen() {
       },
     };
 
-    const food = labelToFood(labelData, barcode);
+    const cleanBarcode = barcodeInput.replace(/\D/g, '').trim() || undefined;
+    const food = labelToFood(labelData, cleanBarcode);
     addCustomFood(food);
 
     // Se tiver código de barras, salva também no cache compartilhado do Supabase
-    if (barcode && supabase) {
+    if (cleanBarcode && supabase) {
       void supabase.from('products').upsert({
-        barcode,
+        barcode: cleanBarcode,
         name: food.name,
         brand: food.brand ?? null,
         per100: food.per100,
         unit_grams: food.unitGrams,
         unit_label: food.unitLabel,
         liquid: food.liquid ?? false,
-        source: 'Cadastrado por Foto (Rótulo)',
+        source: 'Cadastrado no NoFoco',
       });
     }
 
@@ -210,6 +212,11 @@ export default function TabelaFotoScreen() {
             <Ionicons name="images-outline" size={16} color={NoFoco.accent} />
             <Text style={styles.linkText}>Escolher foto da galeria</Text>
           </Pressable>
+
+          <Pressable style={styles.manualBtn} onPress={() => setPhase('revisao')}>
+            <Ionicons name="create-outline" size={16} color={NoFoco.soft} />
+            <Text style={styles.manualBtnText}>Ou cadastrar manualmente (sem foto)</Text>
+          </Pressable>
         </View>
       ) : phase === 'analisando' ? (
         <View style={styles.body}>
@@ -250,6 +257,16 @@ export default function TabelaFotoScreen() {
               onChangeText={setBrand}
               placeholder="Ex.: Bauducco, Nestlé"
               placeholderTextColor={NoFoco.soft}
+              style={styles.input}
+            />
+            <View style={styles.divider} />
+            <Text style={styles.fieldLabel}>Código de Barras (EAN - Opcional)</Text>
+            <TextInput
+              value={barcodeInput}
+              onChangeText={setBarcodeInput}
+              placeholder="Ex.: 7891000100103"
+              placeholderTextColor={NoFoco.soft}
+              keyboardType="numeric"
               style={styles.input}
             />
           </View>
@@ -480,4 +497,12 @@ const styles = StyleSheet.create({
   ctaText: { color: NoFoco.onAccent, fontSize: 15, fontWeight: '800' },
   linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: Spacing.sm },
   linkText: { color: NoFoco.accent, fontSize: 13, fontWeight: '700' },
+  manualBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  manualBtnText: { color: NoFoco.soft, fontSize: 12.5, fontWeight: '600' },
 });

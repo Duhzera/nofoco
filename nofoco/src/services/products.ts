@@ -20,6 +20,7 @@
  */
 import { rememberFood, type Food, type Nutrients, type Serving } from '@/data/foods';
 import { supabase } from '@/services/supabase';
+import { useCustomFoods } from '@/store/custom-foods';
 
 const OFF_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
 const OFF_FIELDS =
@@ -219,6 +220,7 @@ function foodFromOFF(code: string, product: any): Food {
     per100,
     unitGrams,
     unitLabel,
+    barcode: code,
     extraServings: extraServings.length > 0 ? extraServings : undefined,
   };
 }
@@ -236,6 +238,7 @@ function foodFromRow(row: any): Food {
     per100: row.per100 as Nutrients,
     unitGrams: row.unit_grams ?? 100,
     unitLabel: row.unit_label ?? 'porção (100 g)',
+    barcode: row.barcode ? String(row.barcode) : undefined,
   };
 }
 
@@ -261,6 +264,19 @@ function rowFromFood(barcode: string, food: Food, imageUrl?: string) {
 export async function lookupProduct(barcode: string): Promise<Food | null> {
   const code = barcode.replace(/\D/g, '').trim();
   if (!code) return null;
+
+  // 0) Alimentos cadastrados localmente pelo usuário (cache local instantâneo e offline)
+  try {
+    const custom = useCustomFoods
+      .getState()
+      .customFoods.find((f) => f.barcode === code || f.id === `barcode-${code}`);
+    if (custom) {
+      rememberFood(custom);
+      return custom;
+    }
+  } catch {
+    // se a store não tiver pronta, segue para as próximas fontes
+  }
 
   // 1) Open Food Facts ao vivo (prioriza para trazer as porções e correções mais recentes)
   try {
